@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { SignIn, SignOut } from "../components/auth-components";
+import { SignIn, SignOut } from "../../components/auth/auth-components";
 
 const Home = async () => {
   const session = await auth();
@@ -13,6 +13,12 @@ const Home = async () => {
       },
     });
   }
+
+  if (session?.user) {
+    const userInfo = session.user;
+    console.log(userInfo.role);
+  }
+
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="bg-neutral-800 rounded-lg p-6 max-w-xl w-full">

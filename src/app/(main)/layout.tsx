@@ -1,8 +1,12 @@
-import { ReactNode } from "react";
-import Navbar from "../components/shared/navbar/Navbar";
-import Sidebar from "../components/shared/navbar/Sidebar";
+import Navbar from "@/src/components/shared/navbar/Navbar";
+import Sidebar from "@/src/components/shared/navbar/Sidebar";
+import { Suspense } from "react";
 
-export default function ClientLayout({ children }: { children: ReactNode }) {
+export default function MainLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <div className="drawer">
       <input id="my-drawer-1" type="checkbox" className="drawer-toggle" />
