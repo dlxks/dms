@@ -1,6 +1,6 @@
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Link from "next/link";
-import dashboardLinks from "../../../app/lib/dashboardLinks";
+import dashboardLinks from "../../../lib/dashboardLinks";
 import { auth } from "@/lib/auth";
 
 const DashboardSidebar = async () => {

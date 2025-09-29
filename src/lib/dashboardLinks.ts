@@ -9,16 +9,21 @@ const dashboardLinks = [
     links: [
       {
         name: "Thesis Defense Schedule",
-        href: "/dashboard/reports",
-        authorization: "",
+        href: "/dashboard/defense-schedules",
+        authorization: "STAFF",
+      },
+      {
+        name: "Defense Schedule",
+        href: "/dashboard/schedules",
+        authorization: ["FACULTY", "STUDENT"],
       },
       {
         name: "Announcements",
         href: "/dashboard/announcements",
-        authorization: "",
+        authorization: [""],
       },
     ],
-    allowed: "",
+    allowed: ["ADMIN", "STAFF", "FACULTY"],
   },
   {
     header: "Thesis",
@@ -26,7 +31,7 @@ const dashboardLinks = [
       {
         name: "Advisees",
         href: "/dashboard/advisees",
-        authorization: "",
+        authorization: [""],
       },
     ],
     allowed: ["STAFF", "FACULTY"],
@@ -37,7 +42,7 @@ const dashboardLinks = [
       {
         name: "Defense Requirements",
         href: "/dashboard/defense-requirements",
-        authorization: "",
+        authorization: [""],
       },
     ],
     allowed: ["STAFF", "FACULTY"],

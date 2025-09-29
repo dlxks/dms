@@ -29,7 +29,7 @@ const DashboardNavbar = async () => {
 
       {/* Right - Profile dropdown (always aligned right) */}
       <div className="flex-none">
-        <ul className="menu menu-horizontal flex items-center">
+        <ul className="menu menu-horizontal flex items-center rounded-full">
           <li>
             <div className="dropdown dropdown-end">
               <div

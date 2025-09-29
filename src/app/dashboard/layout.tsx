@@ -21,7 +21,7 @@ export default async function DashboardLayout({
       <input id="dashboard-drawer" type="checkbox" className="drawer-toggle" />
       <div className="drawer-content flex flex-col">
         <DashboardNavbar />
-        {children}
+        <main className="px-4 py-8">{children}</main>
       </div>
       <DashboardSidebar />
     </div>
