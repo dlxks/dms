@@ -15,6 +15,8 @@ CREATE TABLE "public"."accounts" (
     "scope" TEXT,
     "id_token" TEXT,
     "session_state" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3),
 
     CONSTRAINT "accounts_pkey" PRIMARY KEY ("id")
 );
@@ -32,12 +34,18 @@ CREATE TABLE "public"."sessions" (
 -- CreateTable
 CREATE TABLE "public"."users" (
     "id" TEXT NOT NULL,
-    "name" TEXT,
+    "studentId" TEXT,
+    "staffId" TEXT,
+    "firstName" TEXT,
+    "middleName" TEXT,
+    "lastName" TEXT,
     "email" TEXT,
     "password" TEXT,
     "email_verified" TIMESTAMP(3),
     "image" TEXT,
     "role" "public"."Role" NOT NULL DEFAULT 'STUDENT',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3),
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
@@ -54,6 +62,12 @@ CREATE UNIQUE INDEX "accounts_provider_provider_account_id_key" ON "public"."acc
 
 -- CreateIndex
 CREATE UNIQUE INDEX "sessions_session_token_key" ON "public"."sessions"("session_token");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_studentId_key" ON "public"."users"("studentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_staffId_key" ON "public"."users"("staffId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "public"."users"("email");

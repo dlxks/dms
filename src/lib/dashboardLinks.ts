@@ -1,23 +1,46 @@
-const dashboardLinks = [
+export type DashboardLink = {
+  icon: string;
+  name: string;
+  href: string;
+  authorization: string[]; // always an array
+};
+
+export type DashboardSection = {
+  header: string;
+  links: DashboardLink[];
+  allowed: string[]; // always an array
+};
+
+const dashboardLinks: DashboardSection[] = [
   {
     header: "Main",
-    links: [{ name: "Dashboard", href: "/dashboard", authorization: "" }],
-    allowed: "",
+    links: [
+      {
+        icon: "heroicons:home-20-solid",
+        name: "Dashboard",
+        href: "/dashboard",
+        authorization: [""],
+      },
+    ],
+    allowed: [""],
   },
   {
     header: "Schedule",
     links: [
       {
+        icon: "heroicons:calendar-days-solid",
         name: "Thesis Defense Schedule",
         href: "/dashboard/defense-schedules",
-        authorization: "STAFF",
+        authorization: ["STAFF", "ADMIN"],
       },
       {
+        icon: "heroicons:clock-solid",
         name: "Defense Schedule",
         href: "/dashboard/schedules",
-        authorization: ["FACULTY", "STUDENT"],
+        authorization: ["FACULTY", "STUDENT", "ADMIN"],
       },
       {
+        icon: "heroicons:megaphone-solid",
         name: "Announcements",
         href: "/dashboard/announcements",
         authorization: [""],
@@ -29,41 +52,50 @@ const dashboardLinks = [
     header: "Thesis",
     links: [
       {
+        icon: "heroicons:user-group-solid",
         name: "Advisees",
         href: "/dashboard/advisees",
         authorization: [""],
       },
     ],
-    allowed: ["STAFF", "FACULTY"],
+    allowed: ["STAFF", "FACULTY", "ADMIN"],
   },
   {
     header: "Documents Management",
     links: [
       {
+        icon: "heroicons:document-text-solid",
         name: "Defense Requirements",
         href: "/dashboard/defense-requirements",
         authorization: [""],
       },
     ],
-    allowed: ["STAFF", "FACULTY"],
+    allowed: ["STAFF", "FACULTY", "ADMIN"],
   },
   {
     header: "Account Management",
     links: [
-      { name: "Staff", href: "/dashboard/staff", authorization: "ADMIN" },
-      { name: "Faculty", href: "/dashboard/faculty", authorization: "ADMIN" },
-      { name: "Students", href: "/dashboard/students", authorization: "ADMIN" },
+      {
+        icon: "heroicons:users-solid",
+        name: "Staff",
+        href: "/dashboard/staff",
+        authorization: ["ADMIN"],
+      },
+      {
+        icon: "heroicons:academic-cap-solid",
+        name: "Faculty",
+        href: "/dashboard/faculty",
+        authorization: ["ADMIN"],
+      },
+      {
+        icon: "heroicons:identification-solid",
+        name: "Students",
+        href: "/dashboard/students",
+        authorization: ["ADMIN"],
+      },
     ],
     allowed: ["ADMIN"],
   },
-
-  {
-    header: "Personal Information",
-    links: [
-      { name: "My Information", href: "/dashboard/myinformation", authorization: "" },
-    ],
-    allowed: [""],
-  }
 ];
 
-export default dashboardLinks
+export default dashboardLinks;

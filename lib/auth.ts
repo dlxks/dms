@@ -5,17 +5,22 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-// ✅ Extend NextAuth types
 declare module "next-auth" {
   interface Session {
     user: {
       id: string;
       role: string;
+      firstName?: string | null;
+      middleName?: string | null;
+      lastName?: string | null;
     } & DefaultSession["user"];
   }
 
   interface User {
     role: string;
+    firstName?: string | null;
+    middleName?: string | null;
+    lastName?: string | null;
   }
 }
 
@@ -23,13 +28,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
 
   providers: [
-    // 🔹 Google OAuth
     GoogleProvider({
       clientId: process.env.AUTH_GOOGLE_ID!,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET!, authorization: {
+        params: {
+          prompt: "select_account",
+        },
+      },
+      profile(profile) {
+        return {
+          id: profile.sub,
+          email: profile.email,
+          firstName: profile.given_name,
+          lastName: profile.family_name,
+          middleName: null, // Google doesn’t provide this
+          image: profile.picture,
+          role: "STUDENT", // default role, change as needed
+        };
+      }
     }),
 
-    // 🔹 Credentials (email/password)
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -48,22 +66,49 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!isValid) return null;
 
         return user;
-      }
+      },
     }),
   ],
 
   callbacks: {
     async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
-        session.user.role = user.role;
+      if (session.user?.email) {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: session.user.email },
+          select: {
+            id: true,
+            firstName: true,
+            middleName: true,
+            lastName: true,
+            role: true,
+          },
+        });
+
+        if (dbUser) {
+          session.user.id = dbUser.id;
+          session.user.firstName = dbUser.firstName;
+          session.user.middleName = dbUser.middleName;
+          session.user.lastName = dbUser.lastName;
+          session.user.role = dbUser.role;
+        }
       }
       return session;
-    },
-
+    }
   },
 
   pages: {
     signIn: "/signin",
-  }
+  },
+
+  events: {
+    // This runs when a user is created for the first time
+    async createUser({ user }) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          middleName: null, // default
+        },
+      });
+    },
+  },
 });

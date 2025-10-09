@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/src/utils/cn";
+import { cn } from "@/src/lib/utils";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Link from "next/link";
 import { usePathname } from "next/navigation";

@@ -4,7 +4,7 @@ import { Icon } from "@iconify/react/dist/iconify.js";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { homeNavLinks } from "./Sidebar";
-import { cn } from "@/src/utils/cn";
+import { cn } from "@/src/lib/utils";
 
 const Navbar = () => {
   const pathname = usePathname();
@@ -54,15 +54,15 @@ const Navbar = () => {
           <div className="">
             <ul className="menu menu-horizontal px-1 flex items-center justify-center gap-2">
               <li className="">
-                <Link href="/signin" className="btn btn-ghost">
+                <Link href="/signin" className="btn btn-primary">
                   Sign In
                 </Link>
               </li>
-              <li>
+              {/* <li>
                 <Link href="/signup" className="btn btn-primary">
                   Create Account
                 </Link>
-              </li>
+              </li> */}
             </ul>
           </div>
         </div>

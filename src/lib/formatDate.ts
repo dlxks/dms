@@ -1,3 +1,4 @@
+
 export function formatDate(dateString: Date | string) {
   const date = new Date(dateString)
 

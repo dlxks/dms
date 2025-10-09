@@ -1,7 +1,9 @@
 import { auth } from "@/lib/auth";
 import UserRedirect from "@/src/components/auth/redirect";
-import DashboardNavbar from "@/src/components/shared/dashboard/DashboardNavbar";
-import DashboardSidebar from "@/src/components/shared/dashboard/DashboardSidebar";
+import { AppSidebar } from "@/src/components/shared/dashboard/nav/app-sidebar";
+import { SiteHeader } from "@/src/components/shared/dashboard/nav/site-header";
+import { SidebarInset, SidebarProvider } from "@/src/components/ui/sidebar";
+import { Toaster } from "sonner";
 
 export default async function DashboardLayout({
   children,
@@ -17,13 +19,22 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="drawer lg:drawer-open">
-      <input id="dashboard-drawer" type="checkbox" className="drawer-toggle" />
-      <div className="drawer-content flex flex-col">
-        <DashboardNavbar />
-        <main className="px-4 py-8">{children}</main>
-      </div>
-      <DashboardSidebar />
-    </div>
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--header-height": "calc(var(--spacing) * 12)",
+        } as React.CSSProperties
+      }
+    >
+      <AppSidebar variant="inset" />
+      <SidebarInset>
+        <SiteHeader />
+        <main className="space-y-6 p-4">
+          {children}
+          <Toaster position="top-right" richColors />
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

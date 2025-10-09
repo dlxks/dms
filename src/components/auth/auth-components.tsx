@@ -1,6 +1,7 @@
 import { signIn, signOut } from "@/lib/auth";
-import { cn } from "@/src/utils/cn";
+import { cn } from "@/src/lib/utils";
 import { Icon } from "@iconify/react/dist/iconify.js";
+import { SignOutButton } from "./signout-button";
 
 interface SignOutProps {
   className?: string;
@@ -8,26 +9,6 @@ interface SignOutProps {
 
 export function SignIn({ provider }: { provider?: string }) {
   return (
-    // <form
-    //   action={async () => {
-    //     "use server";
-    //     await signIn(provider, { callbackUrl: "/dashboard" });
-
-    //     const session = await auth();
-
-    //     // if (session?.user?.role === "client") {
-    //     //   redirect("/dashboard");
-    //     // } else if (
-    //     //   session?.user?.role === "admin" ||
-    //     //   session?.user?.role === "staff"
-    //     // ) {
-    //     //   redirect("/dashboard");
-    //     // } else {
-    //     //   redirect("/");
-    //     // }
-    //   }}
-    // >
-
     <form
       action={async () => {
         "use server";
@@ -56,9 +37,7 @@ export function SignOut({ className }: SignOutProps) {
       }}
       className="w-full block"
     >
-      <button type="submit" className={signOutClass}>
-        Sign Out
-      </button>
+      <SignOutButton className={signOutClass} />
     </form>
   );
 }

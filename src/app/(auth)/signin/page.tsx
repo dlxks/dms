@@ -31,28 +31,28 @@ const SignInPage = async () => {
         />
         Return to home
       </Link>
-      <div className="flex min-h-[80vh] items-center justify-center mt-16">
-        <div className="glass w-full max-w-md rounded-xl p-8 shadow-lg">
-          <h1 className="mb-6 text-center text-2xl font-semibold tracking-wide">
+      <div className="flex min-h-[60vh] items-center justify-center mt-16">
+        <div className="bg-slate-500/80 glass w-full max-w-md rounded-xl p-8 shadow-md/20">
+          <h1 className="mb-6 text-center text-2xl text-white font-semibold tracking-wide">
             Sign in to your account
           </h1>
 
           {/* Credentials form */}
-          <SignInForm />
+          {/* <SignInForm /> */}
 
-          <div className="divider py-4">OR</div>
+          {/* <div className="divider py-4">OR</div> */}
 
           {/* Google OAuth */}
           <div className="w-full flex items-center justify-center">
             <SignIn provider="google" />
           </div>
 
-          <p className="text-center text-sm mt-4">
+          {/* <p className="text-center text-sm mt-4">
             Don&apos;t have an account yet?{" "}
             <a href="/signup" className="link link-primary">
               Sign up
             </a>
-          </p>
+          </p> */}
         </div>
       </div>
     </section>
