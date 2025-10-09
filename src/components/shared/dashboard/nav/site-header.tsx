@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Icon } from "@iconify/react";
 import { Separator } from "@/src/components/ui/separator";
 import { SidebarTrigger } from "@/src/components/ui/sidebar";
 import dashboardLinks from "@/src/lib/dashboardLinks";

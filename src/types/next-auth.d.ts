@@ -1,4 +1,3 @@
-import { DefaultUser } from "@auth/core/types"
 import { DefaultSession } from "next-auth"
 
 declare module "next-auth" {
