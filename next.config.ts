@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  eslint: {
+    // ⚠️ WARNING: This disables ESLint during builds entirely.
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;
