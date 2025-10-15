@@ -12,9 +12,9 @@ import {
 import { IconDotsVertical } from "@tabler/icons-react";
 import { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import DeleteConfirmDialog from "./delete-dialog";
 import { deleteUserAction } from "./actions";
 import { toast } from "sonner";
+import DeleteConfirmDialog from "@/src/components/shared/dashboard/delete-dialog";
 
 export type UserSession = { expires: string };
 
@@ -153,7 +153,7 @@ export function getUserColumns(
               >
                 <Button
                   variant="ghost"
-                  className="w-full justify-start text-red-600 hover:bg-red-50"
+                  className="w-full justify-start text-red-600 hover:bg-red-50 pl-2"
                 >
                   Delete
                 </Button>

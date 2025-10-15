@@ -2,8 +2,11 @@ import LoadingState from "@/src/components/shared/LoadingState";
 import { getUsers } from "@/src/utils/getUsers";
 import { Suspense } from "react";
 import StudentsTable from "./students-table";
+import { requireRole } from "@/src/lib/requireRole";
 
 const UsersPage = async () => {
+  await requireRole("ADMIN");
+
   const rawData = await getUsers({
     filters: { role: "STUDENT" },
     page: 1,

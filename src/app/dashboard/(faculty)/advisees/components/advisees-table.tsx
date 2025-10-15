@@ -1,9 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useDebounce } from "@/src/hooks/useDebounce";
-import { fetchUsersAction } from "@/src/app/dashboard/(admin)/students/actions";
-
 import {
   flexRender,
   getCoreRowModel,
@@ -14,6 +11,7 @@ import {
   SortingState,
   VisibilityState,
 } from "@tanstack/react-table";
+import { useDebounce } from "@/src/hooks/useDebounce";
 
 import {
   Table,
@@ -39,56 +37,66 @@ import {
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
 } from "@/src/components/ui/dropdown-menu";
+
 import LoadingState from "@/src/components/shared/LoadingState";
 import DataPagination from "@/src/components/shared/dashboard/DataPagination";
+import AddAdviseeDialog from "./add-advisee-dialog";
+import { fetchAdviseesAction } from "../actions";
+import { getAdviseeColumns } from "../columns";
 
 import {
-  IconColumns,
   IconChevronLeft,
   IconChevronRight,
   IconChevronsLeft,
   IconChevronsRight,
   IconArrowUp,
   IconArrowDown,
+  IconAdjustments,
 } from "@tabler/icons-react";
-import { getUserColumns } from "./columns";
 
-// ---------------- TYPES ----------------
-type UserItem = {
+export type AdviseeItem = {
   id: string;
-  studentId?: string | null;
-  staffId?: string | null;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber?: string | null;
-  session?: { expires: string }[] | null;
-  createdAt?: string;
+  adviserId: string;
+  studentId: string;
+  status: "PENDING" | "ACTIVE" | "INACTIVE";
+  createdAt: string;
+  student: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+  };
+  adviser: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+  };
 };
 
-type UsersResponse = {
-  items: UserItem[];
+export type AdviseesResponse = {
+  items: AdviseeItem[];
   page: number;
   pageSize: number;
   pages: number;
 };
 
-type UsersTableProps = {
-  role: string;
-  initialData: UsersResponse;
-  editBasePath?: string;
-  onDelete?: (id: string) => void;
-  onAdd?: () => void;
-};
-
-// ---------------- COMPONENT ----------------
-export default function UsersTable({ role, initialData }: UsersTableProps) {
+export default function AdviseesTable({
+  initialData,
+  adviserId,
+}: {
+  initialData: AdviseesResponse;
+  adviserId: string;
+}) {
   const [page, setPage] = React.useState(initialData.page || 1);
   const [pageSize, setPageSize] = React.useState(initialData.pageSize || 10);
   const [search, setSearch] = React.useState("");
   const debouncedSearch = useDebounce(search, 500);
 
-  const [data, setData] = React.useState<UserItem[]>(initialData.items || []);
+  const [data, setData] = React.useState<AdviseeItem[]>(
+    initialData.items || []
+  );
   const [totalPages, setTotalPages] = React.useState(initialData.pages || 1);
   const [isLoading, setIsLoading] = React.useState(false);
 
@@ -97,47 +105,53 @@ export default function UsersTable({ role, initialData }: UsersTableProps) {
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
-  // ---------------- DATA FETCH ----------------
   const fetchData = React.useCallback(
     async (
       opts?: Partial<{ page: number; pageSize: number; search: string }>
     ) => {
       setIsLoading(true);
       try {
-        const res = await fetchUsersAction({
+        const res = await fetchAdviseesAction({
           page: opts?.page ?? page,
           pageSize: opts?.pageSize ?? pageSize,
           search: opts?.search ?? debouncedSearch,
-          filters: { role },
+          adviserId, // Important!
         });
 
-        setData(
-          res.items.map((u: any) => ({
-            ...u,
-            session: u.sessions ?? [],
-          }))
-        );
+        const normalized = res.items.map((item: any) => ({
+          ...item,
+          createdAt:
+            typeof item.createdAt === "string"
+              ? item.createdAt
+              : item.createdAt?.toISOString?.() ?? "",
+        }));
+
+        setData(normalized);
         setTotalPages(res.pages);
         setPage(res.page);
-      } catch (e) {
-        console.error("Error fetching users:", e);
+      } catch (error) {
+        console.error("Error fetching advisees:", error);
       } finally {
         setIsLoading(false);
       }
     },
-    [page, pageSize, debouncedSearch, role]
+    [page, pageSize, debouncedSearch, adviserId]
   );
 
   React.useEffect(() => {
     fetchData({ search: debouncedSearch });
-  }, [debouncedSearch, page, pageSize, role, fetchData]);
+  }, [debouncedSearch, page, pageSize, fetchData]);
 
-  const columns = React.useMemo(() => getUserColumns(fetchData), [fetchData]);
+  const columns = React.useMemo(
+    () => getAdviseeColumns(fetchData),
+    [fetchData]
+  );
 
   const table = useReactTable({
     data,
     columns,
     state: { sorting, columnVisibility, rowSelection },
+    enableRowSelection: true,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
@@ -148,20 +162,18 @@ export default function UsersTable({ role, initialData }: UsersTableProps) {
     getRowId: (row) => row.id,
   });
 
-  // ---------------- RENDER ----------------
   return (
     <div className="space-y-4">
-      {/* Header Controls */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Label>Page size:</Label>
           <Select
             value={String(pageSize)}
             onValueChange={(v) => {
-              const n = Number(v);
-              setPageSize(n);
+              const newSize = Number(v);
+              setPageSize(newSize);
               setPage(1);
-              fetchData({ pageSize: n });
+              fetchData({ pageSize: newSize });
             }}
           >
             <SelectTrigger className="w-[90px]">
@@ -177,25 +189,40 @@ export default function UsersTable({ role, initialData }: UsersTableProps) {
           </Select>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Input
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            className="max-w-sm"
-          />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              Controls <IconAdjustments />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64 space-y-2 p-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Search</Label>
+              <Input
+                placeholder="Search advisees..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+            <Button
+              variant="secondary"
+              className="w-full justify-start"
+              onClick={() =>
+                fetchData({ page, pageSize, search: debouncedSearch })
+              }
+              disabled={isLoading}
+            >
+              <IconArrowDown size={16} className="rotate-180 mr-2" />
+              Refresh Data
+            </Button>
 
-          {/* Column Toggle */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
-                <IconColumns size={18} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <div className="border-t border-muted pt-2">
+              <Label className="text-xs text-muted-foreground">
+                Visible Columns
+              </Label>
               {table
                 .getAllLeafColumns()
                 .filter((col) => col.getCanHide())
@@ -204,21 +231,20 @@ export default function UsersTable({ role, initialData }: UsersTableProps) {
                     key={column.id}
                     checked={column.getIsVisible()}
                     onCheckedChange={(v) => column.toggleVisibility(!!v)}
+                    className="capitalize"
                   >
                     {column.columnDef.header as string}
                   </DropdownMenuCheckboxItem>
                 ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </div>
 
-          {/* <Button variant="outline" onClick={() => onAdd?.()}>
-            <IconPlus size={16} className="mr-2" />
-            Add
-          </Button> */}
-        </div>
+            <div className="border-t border-muted pt-2">
+              <AddAdviseeDialog adviserId={adviserId} />
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {/* Table */}
       {isLoading ? (
         <LoadingState rows={6} />
       ) : (
@@ -249,10 +275,10 @@ export default function UsersTable({ role, initialData }: UsersTableProps) {
                         {header.column.getCanSort() && (
                           <>
                             {header.column.getIsSorted() === "asc" && (
-                              <IconArrowUp size={14} stroke={1.5} />
+                              <IconArrowUp size={14} />
                             )}
                             {header.column.getIsSorted() === "desc" && (
-                              <IconArrowDown size={14} stroke={1.5} />
+                              <IconArrowDown size={14} />
                             )}
                           </>
                         )}
@@ -283,7 +309,7 @@ export default function UsersTable({ role, initialData }: UsersTableProps) {
                     colSpan={columns.length}
                     className="text-center py-6 text-muted-foreground"
                   >
-                    No results.
+                    No advisees found.
                   </TableCell>
                 </TableRow>
               )}
@@ -292,54 +318,56 @@ export default function UsersTable({ role, initialData }: UsersTableProps) {
         </div>
       )}
 
-      {/* Pagination */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
           {Object.keys(rowSelection).length} selected
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setPage(1)}
-            disabled={page <= 1}
-          >
-            <IconChevronsLeft size={16} />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setPage((p) => Math.max(p - 1, 1))}
-            disabled={page <= 1}
-          >
-            <IconChevronLeft size={16} />
-          </Button>
-          <div className="text-sm">
-            Page {page} of {totalPages}
+
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setPage(1)}
+              disabled={page <= 1}
+            >
+              <IconChevronsLeft size={16} />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setPage((p) => Math.max(p - 1, 1))}
+              disabled={page <= 1}
+            >
+              <IconChevronLeft size={16} />
+            </Button>
+            <div className="text-sm">
+              Page {page} of {totalPages}
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+              disabled={page >= totalPages}
+            >
+              <IconChevronRight size={16} />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setPage(totalPages)}
+              disabled={page >= totalPages}
+            >
+              <IconChevronsRight size={16} />
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-            disabled={page >= totalPages}
-          >
-            <IconChevronRight size={16} />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setPage(totalPages)}
-            disabled={page >= totalPages}
-          >
-            <IconChevronsRight size={16} />
-          </Button>
-        </div>
+        )}
       </div>
 
       <DataPagination
         page={page}
         totalPages={totalPages}
-        onPageChange={(p) => setPage(p)}
+        onPageChange={setPage}
       />
     </div>
   );

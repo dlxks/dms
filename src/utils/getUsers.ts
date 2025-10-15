@@ -1,4 +1,3 @@
-// src/lib/getUsers.ts
 import prisma from "@/lib/prisma";
 
 export type UserFilterValue =

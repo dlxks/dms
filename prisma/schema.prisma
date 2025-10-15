@@ -54,10 +54,22 @@ model User {
   emailVerified DateTime? @map("email_verified")
   image         String?
   role          Role      @default(STUDENT)
-  accounts      Account[]
-  sessions      Session[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime? @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+
+  // Relations
+  announcements             Announcement[]       @relation("CreatedAnnouncements")
+  defenseSchedulesCreated   DefenseSchedule[]    @relation("CreatedByRelation")
+  defenseSchedulesUpdated   DefenseSchedule[]    @relation("UpdatedByRelation")
+  defenseSchedulesAsStudent DefenseSchedule[]    @relation("StudentRelation")
+  defenseSchedulesAsFaculty DefenseSchedule[]    @relation("FacultyRelation")
+  defenseRequirements       DefenseRequirement[] @relation("OwnerDefenseRequirements")
+
+  adviseesAsAdviser Advisee[] @relation("AdviserRelation")
+  adviseesAsStudent Advisee[] @relation("StudentRelation")
 
   @@map("users")
 }
@@ -71,9 +83,85 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
+model Announcement {
+  id        String    @id @default(cuid())
+  title     String
+  content   String
+  files     String[]  @default([])
+  createdBy String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+
+  creator User @relation("CreatedAnnouncements", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@map("announcements")
+}
+
+model DefenseSchedule {
+  id           String   @id @default(cuid())
+  studentId    String
+  facultyId    String
+  date         DateTime
+  time         String
+  status       String   @default("PENDING")
+  requirements String[] @default([])
+  createdBy    String
+  updatedBy    String?
+
+  // Relation aliases to avoid Prisma confusion
+  student     User  @relation("StudentRelation", fields: [studentId], references: [id], onDelete: Cascade)
+  faculty     User  @relation("FacultyRelation", fields: [facultyId], references: [id], onDelete: Cascade)
+  createdUser User  @relation("CreatedByRelation", fields: [createdBy], references: [id], onDelete: Cascade)
+  updatedUser User? @relation("UpdatedByRelation", fields: [updatedBy], references: [id])
+
+  defenseRequirements DefenseRequirement[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+
+  @@map("defense_schedules")
+}
+
+model DefenseRequirement {
+  id        String @id @default(cuid())
+  title     String
+  file      String
+  ownerId   String
+  defenseId String
+
+  owner   User            @relation("OwnerDefenseRequirements", fields: [ownerId], references: [id], onDelete: Cascade)
+  defense DefenseSchedule @relation(fields: [defenseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+
+  @@map("defense_requirements")
+}
+
+model Advisee {
+  id        String        @id @default(cuid())
+  adviserId String
+  studentId String
+  status    AdviseeStatus @default(PENDING)
+
+  adviser User @relation("AdviserRelation", fields: [adviserId], references: [id], onDelete: Cascade)
+  student User @relation("StudentRelation", fields: [studentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+
+  @@map("advisees")
+}
+
 enum Role {
   STUDENT
   FACULTY
   STAFF
   ADMIN
+}
+
+enum AdviseeStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
 }

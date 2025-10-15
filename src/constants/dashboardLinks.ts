@@ -16,7 +16,7 @@ const dashboardLinks: DashboardSection[] = [
     header: "Main",
     links: [
       {
-        icon: "heroicons:home-20-solid",
+        icon: "heroicons-outline:home", // outline home
         name: "Dashboard",
         href: "/dashboard",
         authorization: [""],
@@ -28,19 +28,19 @@ const dashboardLinks: DashboardSection[] = [
     header: "Schedule",
     links: [
       {
-        icon: "heroicons:calendar-days-solid",
+        icon: "heroicons-outline:calendar", // outline calendar
         name: "Thesis Defense Schedule",
         href: "/dashboard/defense-schedules",
         authorization: ["STAFF", "ADMIN"],
       },
       {
-        icon: "heroicons:clock-solid",
+        icon: "heroicons-outline:clock", // outline clock
         name: "Defense Schedule",
         href: "/dashboard/schedules",
         authorization: ["FACULTY", "STUDENT", "ADMIN"],
       },
       {
-        icon: "heroicons:megaphone-solid",
+        icon: "heroicons-outline:megaphone", // outline megaphone
         name: "Announcements",
         href: "/dashboard/announcements",
         authorization: [""],
@@ -52,7 +52,7 @@ const dashboardLinks: DashboardSection[] = [
     header: "Thesis",
     links: [
       {
-        icon: "heroicons:user-group-solid",
+        icon: "heroicons-outline:user-group", // outline user group
         name: "Advisees",
         href: "/dashboard/advisees",
         authorization: [""],
@@ -61,12 +61,30 @@ const dashboardLinks: DashboardSection[] = [
     allowed: ["STAFF", "FACULTY", "ADMIN"],
   },
   {
-    header: "Documents Management",
+    header: "Documents",
     links: [
       {
-        icon: "heroicons:document-text-solid",
+        icon: "heroicons-outline:clipboard-check", // Defense Requirements → checklist outline
         name: "Defense Requirements",
         href: "/dashboard/defense-requirements",
+        authorization: [""],
+      },
+      {
+        icon: "heroicons-outline:book-open", // Syllabus → open book outline
+        name: "Syllabus",
+        href: "/dashboard/syllabus",
+        authorization: [""],
+      },
+      {
+        icon: "heroicons-outline:document-check", // Acceptance Forms → document with check outline
+        name: "Acceptance Forms",
+        href: "/dashboard/acceptance-forms",
+        authorization: [""],
+      },
+      {
+        icon: "heroicons-outline:academic-cap", // Grades → graduation cap outline
+        name: "Grades",
+        href: "/dashboard/grades",
         authorization: [""],
       },
     ],
@@ -76,19 +94,19 @@ const dashboardLinks: DashboardSection[] = [
     header: "Account Management",
     links: [
       {
-        icon: "heroicons:users-solid",
+        icon: "heroicons-outline:users", // outline users
         name: "Staff",
         href: "/dashboard/staff",
         authorization: ["ADMIN"],
       },
       {
-        icon: "heroicons:academic-cap-solid",
+        icon: "heroicons-outline:academic-cap", // outline graduation cap for Faculty
         name: "Faculty",
         href: "/dashboard/faculty",
         authorization: ["ADMIN"],
       },
       {
-        icon: "heroicons:identification-solid",
+        icon: "heroicons-outline:identification", // outline ID for Students
         name: "Students",
         href: "/dashboard/students",
         authorization: ["ADMIN"],

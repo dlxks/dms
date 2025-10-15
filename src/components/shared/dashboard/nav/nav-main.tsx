@@ -19,7 +19,7 @@ import {
   SidebarMenuSubItem,
 } from "@/src/components/ui/sidebar";
 
-import dashboardLinks from "@/src/lib/dashboardLinks";
+import dashboardLinks from "@/src/constants/dashboardLinks";
 
 interface NavMainProps {
   role: string;
