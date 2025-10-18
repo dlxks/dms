@@ -1,4 +1,5 @@
-// columns.tsx
+"use client";
+
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
 import { Checkbox } from "@/src/components/ui/checkbox";
@@ -12,9 +13,10 @@ import {
 import { IconDotsVertical } from "@tabler/icons-react";
 import { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import DeleteConfirmDialog from "../../../../components/shared/dashboard/delete-dialog";
-import { deleteUserAction } from "./actions";
+import { deleteUserAction } from "../actions";
 import { toast } from "sonner";
+import DeleteConfirmDialog from "@/src/components/shared/dashboard/delete-dialog";
+import { FacultyDrawer } from "./faculty-drawer";
 
 export type UserSession = { expires: string };
 
@@ -128,16 +130,16 @@ export function getUserColumns(
               <IconDotsVertical />
             </Button>
           </DropdownMenuTrigger>
+
           <DropdownMenuContent align="end" className="w-32">
+            {/* Edit Link */}
             <DropdownMenuItem asChild>
-              <Link
-                href={`/dashboard/students/${row.original.id}/edit`}
-                className="flex items-center"
-              >
-                Edit
-              </Link>
+              <FacultyDrawer item={row.original} fetchData={fetchData} />
             </DropdownMenuItem>
+
             <DropdownMenuSeparator />
+
+            {/* Delete */}
             <DropdownMenuItem asChild>
               <DeleteConfirmDialog
                 itemName={`${row.original.firstName} ${row.original.lastName}`}

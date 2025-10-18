@@ -21,6 +21,12 @@ const dashboardLinks: DashboardSection[] = [
         href: "/dashboard",
         authorization: [""],
       },
+      {
+        icon: "heroicons-outline:megaphone", // outline megaphone
+        name: "Announcements",
+        href: "/dashboard/announcements",
+        authorization: [""],
+      },
     ],
     allowed: [""],
   },
@@ -29,21 +35,15 @@ const dashboardLinks: DashboardSection[] = [
     links: [
       {
         icon: "heroicons-outline:calendar", // outline calendar
-        name: "Thesis Defense Schedule",
+        name: "Defense Schedule",
         href: "/dashboard/defense-schedules",
-        authorization: ["STAFF", "ADMIN"],
+        authorization: ["FACULTY", "STUDENT", "ADMIN",],
       },
       {
         icon: "heroicons-outline:clock", // outline clock
-        name: "Defense Schedule",
+        name: "Defense Schedule Requests",
         href: "/dashboard/schedules",
-        authorization: ["FACULTY", "STUDENT", "ADMIN"],
-      },
-      {
-        icon: "heroicons-outline:megaphone", // outline megaphone
-        name: "Announcements",
-        href: "/dashboard/announcements",
-        authorization: [""],
+        authorization: ["STAFF", "ADMIN"],
       },
     ],
     allowed: ["ADMIN", "STAFF", "FACULTY"],
@@ -64,27 +64,9 @@ const dashboardLinks: DashboardSection[] = [
     header: "Documents",
     links: [
       {
-        icon: "heroicons-outline:clipboard-check", // Defense Requirements → checklist outline
-        name: "Defense Requirements",
-        href: "/dashboard/defense-requirements",
-        authorization: [""],
-      },
-      {
-        icon: "heroicons-outline:book-open", // Syllabus → open book outline
-        name: "Syllabus",
-        href: "/dashboard/syllabus",
-        authorization: [""],
-      },
-      {
         icon: "heroicons-outline:document-check", // Acceptance Forms → document with check outline
-        name: "Acceptance Forms",
-        href: "/dashboard/acceptance-forms",
-        authorization: [""],
-      },
-      {
-        icon: "heroicons-outline:academic-cap", // Grades → graduation cap outline
-        name: "Grades",
-        href: "/dashboard/grades",
+        name: "Faculty Requirements",
+        href: "/dashboard/faculty-requirements",
         authorization: [""],
       },
     ],

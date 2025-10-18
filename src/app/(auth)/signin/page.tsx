@@ -1,9 +1,8 @@
 import { auth } from "@/lib/auth";
-import SignInForm from "./SigninForm";
-import { SignIn } from "@/src/components/auth/auth-components";
 import UserRedirect from "@/src/components/auth/redirect";
 import Link from "next/link";
 import { Icon } from "@iconify/react/dist/iconify.js";
+import { SignIn } from "@/src/components/auth/auth-components";
 
 const SignInPage = async () => {
   const session = await auth();
@@ -20,7 +19,6 @@ const SignInPage = async () => {
     );
   }
 
-  // Not signed in → show login form
   return (
     <section className="container mx-auto py-12 px-4 lg:px-0">
       <Link href="/" className="flex items-center link link-hover">
@@ -36,23 +34,9 @@ const SignInPage = async () => {
           <h1 className="mb-6 text-center text-2xl text-white font-semibold tracking-wide">
             Sign in to your account
           </h1>
-
-          {/* Credentials form */}
-          {/* <SignInForm /> */}
-
-          {/* <div className="divider py-4">OR</div> */}
-
-          {/* Google OAuth */}
           <div className="w-full flex items-center justify-center">
             <SignIn provider="google" />
           </div>
-
-          {/* <p className="text-center text-sm mt-4">
-            Don&apos;t have an account yet?{" "}
-            <a href="/signup" className="link link-primary">
-              Sign up
-            </a>
-          </p> */}
         </div>
       </div>
     </section>

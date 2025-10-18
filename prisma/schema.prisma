@@ -9,6 +9,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+//////////////////////////////////////////////////////
+// AUTHENTICATION MODELS
+//////////////////////////////////////////////////////
+
 model Account {
   id                String    @id @default(cuid())
   userId            String    @map("user_id")
@@ -36,10 +40,24 @@ model Session {
   sessionToken String   @unique @map("session_token")
   userId       String   @map("user_id")
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
 }
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+//////////////////////////////////////////////////////
+// USER & RELATED MODELS
+//////////////////////////////////////////////////////
 
 model User {
   id            String    @id @default(cuid())
@@ -57,31 +75,38 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime? @updatedAt
 
+  // Authentication
   accounts Account[]
   sessions Session[]
 
-  // Relations
-  announcements             Announcement[]       @relation("CreatedAnnouncements")
-  defenseSchedulesCreated   DefenseSchedule[]    @relation("CreatedByRelation")
-  defenseSchedulesUpdated   DefenseSchedule[]    @relation("UpdatedByRelation")
-  defenseSchedulesAsStudent DefenseSchedule[]    @relation("StudentRelation")
-  defenseSchedulesAsFaculty DefenseSchedule[]    @relation("FacultyRelation")
-  defenseRequirements       DefenseRequirement[] @relation("OwnerDefenseRequirements")
+  // Announcements
+  announcements Announcement[] @relation("CreatedAnnouncements")
 
-  adviseesAsAdviser Advisee[] @relation("AdviserRelation")
-  adviseesAsStudent Advisee[] @relation("StudentRelation")
+  // Defense Schedule Relations
+  defenseSchedulesCreated   DefenseSchedule[] @relation("CreatedByRelation")
+  defenseSchedulesUpdated   DefenseSchedule[] @relation("UpdatedByRelation")
+  defenseSchedulesAsStudent DefenseSchedule[] @relation("StudentRelation")
+
+  // Many-to-many: faculty members who are part of defense panels
+  defenseMemberships DefenseSchedule[] @relation("DefenseFacultyMembers")
+
+  // Defense requirements owned by this user
+  defenseRequirements DefenseRequirement[] @relation("OwnerDefenseRequirements")
+
+  // Advisee relationships
+  adviseesAsAdviser  Advisee[] @relation("AdviserRelation")
+  adviseesAsStudent  Advisee[] @relation("StudentRelation")
+  adviseeMemberships Advisee[] @relation("AdviseeMembers")
+
+  // Faculty documents
+  facultyDocuments FacultyDocument[]
 
   @@map("users")
 }
 
-model VerificationToken {
-  identifier String
-  token      String
-  expires    DateTime
-
-  @@unique([identifier, token])
-  @@map("verification_tokens")
-}
+//////////////////////////////////////////////////////
+// ANNOUNCEMENTS
+//////////////////////////////////////////////////////
 
 model Announcement {
   id        String    @id @default(cuid())
@@ -97,24 +122,32 @@ model Announcement {
   @@map("announcements")
 }
 
+//////////////////////////////////////////////////////
+// DEFENSE SCHEDULE & REQUIREMENTS
+//////////////////////////////////////////////////////
 model DefenseSchedule {
-  id           String   @id @default(cuid())
-  studentId    String
-  facultyId    String
-  date         DateTime
-  time         String
-  status       String   @default("PENDING")
-  requirements String[] @default([])
-  createdBy    String
-  updatedBy    String?
+  id        String          @id @default(cuid())
+  studentId String
+  category  DefenseCategory
+  date      DateTime
+  time      String
+  status    DefenseStatus   @default(PENDING)
+  createdBy String
+  updatedBy String?
 
-  // Relation aliases to avoid Prisma confusion
+  // Relations
   student     User  @relation("StudentRelation", fields: [studentId], references: [id], onDelete: Cascade)
-  faculty     User  @relation("FacultyRelation", fields: [facultyId], references: [id], onDelete: Cascade)
   createdUser User  @relation("CreatedByRelation", fields: [createdBy], references: [id], onDelete: Cascade)
   updatedUser User? @relation("UpdatedByRelation", fields: [updatedBy], references: [id])
 
+  // Many-to-many: faculty panel members
+  facultyMembers User[] @relation("DefenseFacultyMembers")
+
+  // Uploaded requirements for this defense
   defenseRequirements DefenseRequirement[]
+
+  // Category-specific required documents (relation fix)
+  requiredDocuments DefenseRequiredDocument[] @relation("ScheduleRequiredDocuments")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime? @updatedAt
@@ -123,20 +156,38 @@ model DefenseSchedule {
 }
 
 model DefenseRequirement {
-  id        String @id @default(cuid())
+  id        String    @id @default(cuid())
   title     String
   file      String
   ownerId   String
   defenseId String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
 
   owner   User            @relation("OwnerDefenseRequirements", fields: [ownerId], references: [id], onDelete: Cascade)
   defense DefenseSchedule @relation(fields: [defenseId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
-
   @@map("defense_requirements")
 }
+
+// Static reference of required documents per defense category
+model DefenseRequiredDocument {
+  id          String          @id @default(cuid())
+  defenseId   String
+  name        String
+  category    DefenseCategory // TITLE or FINAL
+  description String?
+  isMandatory Boolean         @default(true)
+
+  // Relation fix: links each required document to a specific DefenseSchedule
+  defense DefenseSchedule @relation("ScheduleRequiredDocuments", fields: [defenseId], references: [id], onDelete: Cascade)
+
+  @@map("defense_required_documents")
+}
+
+//////////////////////////////////////////////////////
+// ADVISEE RELATIONSHIPS
+//////////////////////////////////////////////////////
 
 model Advisee {
   id        String        @id @default(cuid())
@@ -147,17 +198,79 @@ model Advisee {
   adviser User @relation("AdviserRelation", fields: [adviserId], references: [id], onDelete: Cascade)
   student User @relation("StudentRelation", fields: [studentId], references: [id], onDelete: Cascade)
 
+  // Many-to-many: additional faculty members
+  members User[] @relation("AdviseeMembers")
+
   createdAt DateTime  @default(now())
   updatedAt DateTime? @updatedAt
 
   @@map("advisees")
 }
 
+//////////////////////////////////////////////////////
+// FACULTY DOCUMENT SUBMISSIONS
+//////////////////////////////////////////////////////
+
+model FacultyDocument {
+  id        String           @id @default(cuid())
+  facultyId String
+  category  DocumentCategory
+  fileUrl   String
+  remarks   String?
+  status    DocumentStatus   @default(NONE)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime?        @updatedAt
+
+  faculty User @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@unique([facultyId, category])
+  @@map("faculty_documents")
+}
+
+//////////////////////////////////////////////////////
+// ENUMERATIONS
+//////////////////////////////////////////////////////
+
 enum Role {
   STUDENT
   FACULTY
   STAFF
   ADMIN
+}
+
+enum DefenseCategory {
+  TITLE
+  FINAL
+}
+
+enum DefenseStatus {
+  PENDING
+  APPROVED
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+}
+
+enum DocumentCategory {
+  SYLLABUS_ACCEPTANCE_FORM
+  TOS_MIDTERM
+  TOS_FINALS
+  RUBRICS_MIDTERM
+  RUBRICS_FINALS
+  EXAMINATIONS_MIDTERM
+  EXAMINATIONS_FINALS
+  GRADING_SHEET
+  RECORD
+  STUDENT_OUTPUT
+  CLASS_RECORD
+  PORTFOLIO
+}
+
+enum DocumentStatus {
+  NONE
+  SUBMITTED
+  REVISED
+  APPROVED
 }
 
 enum AdviseeStatus {

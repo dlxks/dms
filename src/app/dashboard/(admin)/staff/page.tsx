@@ -1,7 +1,7 @@
 import LoadingState from "@/src/components/shared/LoadingState";
 import { getUsers } from "@/src/utils/getUsers";
 import { Suspense } from "react";
-import StaffTable from "./staff-table";
+import StaffTable from "./components/staff-table";
 import { requireRole } from "@/src/lib/requireRole";
 
 const UsersPage = async () => {

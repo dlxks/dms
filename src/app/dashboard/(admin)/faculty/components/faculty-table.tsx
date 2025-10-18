@@ -24,14 +24,6 @@ import {
 } from "@/src/components/ui/table";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
-import { Label } from "@/src/components/ui/label";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/src/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -39,20 +31,29 @@ import {
   DropdownMenuCheckboxItem,
 } from "@/src/components/ui/dropdown-menu";
 import LoadingState from "@/src/components/shared/LoadingState";
-import DataPagination from "@/src/components/shared/dashboard/DataPagination";
 
 import {
-  IconColumns,
   IconChevronLeft,
   IconChevronRight,
   IconChevronsLeft,
   IconChevronsRight,
   IconArrowUp,
   IconArrowDown,
-  IconArrowsSort,
+  IconLayoutColumns,
+  IconChevronDown,
 } from "@tabler/icons-react";
 import { getUserColumns } from "./columns";
-import { fetchUsersAction } from "./actions";
+import { fetchUsersAction } from "../actions";
+import { exportExcelFile } from "@/src/utils/exportExcel";
+import { AddFacultyDialog } from "./add-faculty-dialog";
+import { Label } from "@/src/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/src/components/ui/select";
 
 // ---------------- TYPES ----------------
 type UserItem = {
@@ -149,73 +150,67 @@ export default function UsersTable({ role, initialData }: UsersTableProps) {
     getRowId: (row) => row.id,
   });
 
+  const handleExport = async (selectedOnly = false) => {
+    const exportData = selectedOnly
+      ? table.getSelectedRowModel().rows.map((r) => r.original)
+      : data;
+
+    await exportExcelFile(exportData, "Faculty", "faculty");
+  };
+
   // ---------------- RENDER ----------------
   return (
     <div className="space-y-4">
-      {/* Header Controls */}
+      {/* Controls */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Label>Page size:</Label>
-          <Select
-            value={String(pageSize)}
-            onValueChange={(v) => {
-              const n = Number(v);
-              setPageSize(n);
-              setPage(1);
-              fetchData({ pageSize: n });
-            }}
-          >
-            <SelectTrigger className="w-[90px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[10, 25, 50, 100].map((n) => (
-                <SelectItem key={n} value={String(n)}>
-                  {n}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-2">
+        <div>
           <Input
             placeholder="Search..."
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             className="max-w-sm"
           />
-
+        </div>
+        <div className="flex items-center gap-2">
           {/* Column Toggle */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
-                <IconColumns size={18} />
+              <Button variant="outline" size="sm">
+                <IconLayoutColumns />
+                <span className="hidden lg:inline">Customize Columns</span>
+                <span className="lg:hidden">Columns</span>
+                <IconChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {table
                 .getAllLeafColumns()
                 .filter((col) => col.getCanHide())
-                .map((column) => (
+                .map((col) => (
                   <DropdownMenuCheckboxItem
-                    key={column.id}
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(v) => column.toggleVisibility(!!v)}
+                    key={col.id}
+                    checked={col.getIsVisible()}
+                    onCheckedChange={(v) => col.toggleVisibility(!!v)}
                   >
-                    {column.columnDef.header as string}
+                    {col.columnDef.header as string}
                   </DropdownMenuCheckboxItem>
                 ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* <Button variant="outline" onClick={() => onAdd?.()}>
-            <IconPlus size={16} className="mr-2" />
-            Add
-          </Button> */}
+          {/* Export Buttons */}
+          {Object.keys(rowSelection).length > 0 ? (
+            <Button onClick={() => handleExport(true)} variant="outline">
+              Export Selected
+            </Button>
+          ) : (
+            <Button onClick={() => handleExport(false)} variant="outline">
+              Export All
+            </Button>
+          )}
+
+          {/* Add student button */}
+          <AddFacultyDialog />
         </div>
       </div>
 
@@ -299,6 +294,30 @@ export default function UsersTable({ role, initialData }: UsersTableProps) {
           {Object.keys(rowSelection).length} selected
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <Label>Page size:</Label>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(v) => {
+                const n = Number(v);
+                setPageSize(n);
+                setPage(1);
+                fetchData({ pageSize: n, page: 1 });
+              }}
+            >
+              <SelectTrigger className="w-[90px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[10, 25, 50, 100].map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    {n}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <Button
             variant="outline"
             size="icon"
@@ -336,12 +355,6 @@ export default function UsersTable({ role, initialData }: UsersTableProps) {
           </Button>
         </div>
       </div>
-
-      <DataPagination
-        page={page}
-        totalPages={totalPages}
-        onPageChange={(p) => setPage(p)}
-      />
     </div>
   );
 }

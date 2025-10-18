@@ -3,62 +3,131 @@
 import prisma from "@/lib/prisma";
 import { getUsers, GetUsersParams } from "@/src/utils/getUsers";
 import { revalidatePath } from "next/cache";
+import { success } from "zod";
+import { da } from "zod/v4/locales";
 
-// GET USER INFORMATION
-export async function fetchUsersAction(params: GetUsersParams) {
-  return await getUsers(params);
+
+/* -------------------------------------------------------------------------- */
+/*                                   TYPES                                    */
+/* -------------------------------------------------------------------------- */
+export interface CreateStaffProps {
+  firstName: string,
+  lastName: string
+  email: string,
+  image?: string;
 }
 
-// DELETE USER
-export async function deleteUserAction(id: string) {
+/* -------------------------------------------------------------------------- */
+/*                                 FETCH USERS                                */
+/* -------------------------------------------------------------------------- */
+export async function fetchUsersAction(params: GetUsersParams) {
   try {
-    await prisma.user.delete({
-      where: { id }
+    return await getUsers(params);
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    throw new Error("Failed to fetch users.");
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                CREATE STAFF                              */
+/* -------------------------------------------------------------------------- */
+export async function createStaffAction(data: CreateStaffProps) {
+  const { firstName, lastName, email, image } = data
+
+  if (!firstName || !lastName || !email) {
+    throw new Error("Missing required fields.")
+  }
+
+  try {
+    const existingUser = await prisma.user.findMany({
+      where: { email }
+    })
+
+    if (existingUser) {
+      return { success: false, message: "Staff already exists." }
+    }
+
+    const newUser = await prisma.user.create({
+      data: {
+        firstName,
+        lastName,
+        email,
+        role: "STAFF",
+        image: image ||
+          `https://api.dicebear.com/9.x/initials/svg?seed=${firstName}+${lastName}`,
+        emailVerified: new Date()
+      }
     })
 
     revalidatePath("/dashboard/staff")
 
-    return { success: true }
+    return { success: true, user: newUser }
   } catch (error) {
-    console.log("Error deleting: ", error)
-    return { success: false, error: "Failed to delete user." }
+    console.error("Error adding user: ", error)
+    return { success: false, message: "Failed to create user." }
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                DELETE STUDENT                              */
+/* -------------------------------------------------------------------------- */
+export async function deleteUserAction(id: string) {
+  try {
+    await prisma.user.delete({ where: { id } });
+    revalidatePath("/dashboard/staff");
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return { success: false, error: "Failed to delete user." };
+  }
+}
 
-// UPDATE USER 
-function getFormValue(fd: FormData, key: string, required = false): string | null {
-  const value = fd.get(key);
+/* -------------------------------------------------------------------------- */
+/*                                 UPDATE STAFF                               */
+/* -------------------------------------------------------------------------- */
+function getFormValue(
+  formData: FormData,
+  key: string,
+  required = false
+): string | null {
+  const value = formData.get(key);
   if (typeof value !== "string") return null;
+
   const trimmed = value.trim();
-  if (trimmed === "") return required ? "" : null;
-  return trimmed;
+  if (!trimmed && required) return "";
+  return trimmed || null;
 }
 
 export async function updateUserAction(id: string, formData: FormData) {
-  const staffId = getFormValue(formData, "staffId", true) as string;
-  const firstName = getFormValue(formData, "firstName", true) as string;
-  const middleName = getFormValue(formData, "middleName", false) as string;
-  const lastName = getFormValue(formData, "lastName", true) as string;
-  const email = getFormValue(formData, "email", true) as string;
-  const phoneNumber = getFormValue(formData, "phoneNumber", false) as string;
+  try {
+    const staffId = getFormValue(formData, "staffId", true);
+    const firstName = getFormValue(formData, "firstName", true);
+    const middleName = getFormValue(formData, "middleName");
+    const lastName = getFormValue(formData, "lastName", true);
+    const email = getFormValue(formData, "email", true);
+    const phoneNumber = getFormValue(formData, "phoneNumber");
 
-  if (!firstName || !lastName || !email) {
-    throw new Error("Missing required fields");
+    if (!firstName || !lastName || !email) {
+      throw new Error("Missing required fields.");
+    }
+
+    await prisma.user.update({
+      where: { id },
+      data: {
+        staffId: staffId ?? undefined,
+        firstName,
+        middleName,
+        lastName,
+        email,
+        phoneNumber,
+      },
+    });
+
+    revalidatePath("/dashboard/staff");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating user:", error);
+    return { success: false, error: "Failed to update user." };
   }
-
-  await prisma.user.update({
-    where: { id },
-    data: {
-      staffId,
-      firstName,
-      middleName,
-      lastName,
-      email,
-      phoneNumber,
-    },
-  });
-
-  // Revalidate the staff list or edit page
-  revalidatePath("/dashboard/staff");
 }

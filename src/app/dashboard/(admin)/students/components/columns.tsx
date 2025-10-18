@@ -12,9 +12,10 @@ import {
 import { IconDotsVertical } from "@tabler/icons-react";
 import { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { deleteUserAction } from "./actions";
-import { toast } from "sonner";
 import DeleteConfirmDialog from "@/src/components/shared/dashboard/delete-dialog";
+import { deleteUserAction } from "../actions";
+import { toast } from "sonner";
+import { StudentDrawer } from "./student-drawer";
 
 export type UserSession = { expires: string };
 
@@ -62,8 +63,8 @@ export function getUserColumns(
     },
 
     {
-      accessorKey: "staffId",
-      header: "Faculty ID",
+      accessorKey: "studentId",
+      header: "Student ID",
       cell: ({ row }) => (
         <div className="font-mono text-sm">
           {row.original.studentId || "N/A"}
@@ -130,12 +131,7 @@ export function getUserColumns(
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-32">
             <DropdownMenuItem asChild>
-              <Link
-                href={`/dashboard/faculty/${row.original.id}/edit`}
-                className="flex items-center"
-              >
-                Edit
-              </Link>
+              <StudentDrawer item={row.original} fetchData={fetchData} />
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
