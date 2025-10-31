@@ -33,7 +33,7 @@ export async function createFacultyAction(data: CreateFacultyProps) {
   }
 
   try {
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.user.findMany({
       where: { email }
     })
 
