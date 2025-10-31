@@ -9,6 +9,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+//////////////////////////////////////////////////////
+// AUTHENTICATION MODELS
+//////////////////////////////////////////////////////
+
 /// =============================
 ///  AUTH MODELS (NextAuth)
 /// =============================
@@ -18,16 +22,17 @@ model Account {
   type              String
   provider          String
   providerAccountId String    @map("provider_account_id")
-  refresh_token     String?
-  access_token      String?
+  refresh_token     String?   @db.Text
+  access_token      String?   @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?
+  id_token          String?   @db.Text
   session_state     String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime? @updatedAt
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
@@ -38,7 +43,8 @@ model Session {
   sessionToken String   @unique @map("session_token")
   userId       String   @map("user_id")
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
 }
@@ -51,6 +57,10 @@ model VerificationToken {
   @@unique([identifier, token])
   @@map("verification_tokens")
 }
+
+//////////////////////////////////////////////////////
+// USER & RELATED MODELS
+//////////////////////////////////////////////////////
 
 /// =============================
 ///  CORE USER MODEL
@@ -85,6 +95,10 @@ model User {
 
   @@map("users")
 }
+
+//////////////////////////////////////////////////////
+// ANNOUNCEMENTS
+//////////////////////////////////////////////////////
 
 /// =============================
 ///  ANNOUNCEMENTS
@@ -126,46 +140,44 @@ model DefenseSchedule {
 }
 
 model DefenseRequirement {
-  id        String          @id @default(cuid())
+  id        String    @id @default(cuid())
   title     String
   file      String
   ownerId   String
   defenseId String
-  createdAt DateTime        @default(now())
-  updatedAt DateTime?       @updatedAt
-  defense   DefenseSchedule @relation(fields: [defenseId], references: [id], onDelete: Cascade)
-  owner     User            @relation("OwnerDefenseRequirements", fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+
+  owner   User            @relation("OwnerDefenseRequirements", fields: [ownerId], references: [id], onDelete: Cascade)
+  defense DefenseSchedule @relation(fields: [defenseId], references: [id], onDelete: Cascade)
 
   @@map("defense_requirements")
 }
 
+// Static reference of required documents per defense category
 model DefenseRequiredDocument {
   id          String          @id @default(cuid())
   defenseId   String
   name        String
-  category    DefenseCategory
+  category    DefenseCategory // TITLE or FINAL
   description String?
   isMandatory Boolean         @default(true)
-  defense     DefenseSchedule @relation("ScheduleRequiredDocuments", fields: [defenseId], references: [id], onDelete: Cascade)
+
+  // Relation fix: links each required document to a specific DefenseSchedule
+  defense DefenseSchedule @relation("ScheduleRequiredDocuments", fields: [defenseId], references: [id], onDelete: Cascade)
 
   @@map("defense_required_documents")
 }
 
-model DefenseFacultyMember {
-  defenseId String
-  facultyId String
-  defense   DefenseSchedule @relation(fields: [defenseId], references: [id], onDelete: Cascade)
-  faculty   User            @relation(fields: [facultyId], references: [id], onDelete: Cascade)
-
-  @@id([defenseId, facultyId])
-  @@map("defense_faculty_members")
-}
+//////////////////////////////////////////////////////
+// ADVISEE RELATIONSHIPS
+//////////////////////////////////////////////////////
 
 /// =============================
 ///  ADVISEE SYSTEM
 /// =============================
 model Advisee {
-  id        String          @id @default(cuid())
+  id        String        @id @default(cuid())
   adviserId String
   studentId String
   createdAt DateTime        @default(now())
@@ -178,10 +190,23 @@ model Advisee {
   @@map("advisees")
 }
 
-//////////////////////////////////////////////////////
-// FACULTY DOCUMENT SUBMISSIONS
-//////////////////////////////////////////////////////
+model AdviseeMember {
+  id        String     @id @default(cuid())
+  adviseeId String
+  memberId  String
+  type      MemberType
+  createdAt DateTime   @default(now())
+  updatedAt DateTime?  @updatedAt
+  advisee   Advisee    @relation("AdviseeMembers", fields: [adviseeId], references: [id], onDelete: Cascade)
+  member    User       @relation("AdviseeMembersUser", fields: [memberId], references: [id], onDelete: Cascade)
 
+  @@unique([adviseeId, memberId])
+  @@map("advisee_members")
+}
+
+/// =============================
+///  FACULTY DOCUMENTS
+/// =============================
 model FacultyDocument {
   id        String           @id @default(cuid())
   facultyId String
@@ -191,11 +216,16 @@ model FacultyDocument {
   status    DocumentStatus   @default(NONE)
   createdAt DateTime         @default(now())
   updatedAt DateTime?        @updatedAt
-  faculty   User             @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  faculty User @relation(fields: [facultyId], references: [id], onDelete: Cascade)
 
   @@unique([facultyId, category])
   @@map("faculty_documents")
 }
+
+//////////////////////////////////////////////////////
+// ENUMERATIONS
+//////////////////////////////////////////////////////
 
 /// =============================
 ///  ENUMS
@@ -246,14 +276,4 @@ enum AdviseeStatus {
   PENDING
   ACTIVE
   INACTIVE
-}
-
-enum MemberType {
-  LEADER
-  MEMBER
-}
-
-enum AnnouncementStatus {
-  VISIBLE
-  HIDDEN
 }

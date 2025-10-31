@@ -23,6 +23,14 @@ import {
 } from "@/src/components/ui/table";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
+import { Label } from "@/src/components/ui/label";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/src/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -31,6 +39,10 @@ import {
 } from "@/src/components/ui/dropdown-menu";
 import LoadingState from "@/src/components/shared/LoadingState";
 import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconChevronsLeft,
+  IconChevronsRight,
   IconArrowUp,
   IconArrowDown,
   IconLayoutColumns,
@@ -41,7 +53,6 @@ import { getUserColumns } from "./columns";
 import { fetchUsersAction } from "../actions";
 import { AddStaffDialog } from "./add-staff-dialog";
 import { exportExcelFile } from "@/src/utils/exportExcel";
-import DataPagination from "@/src/components/shared/data-pagination";
 
 // ---------------- TYPES ----------------
 export type UserItem = {
@@ -266,27 +277,72 @@ export default function UsersTable({ role, initialData }: UsersTableProps) {
         </div>
       )}
 
-      {/* Pagination controls */}
+      {/* Pagination */}
       <div className="flex items-center justify-between">
-        {/* Selected rows */}
         <div className="text-sm text-muted-foreground">
           {Object.keys(rowSelection).length} selected
         </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <Label>Page size:</Label>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(v) => {
+                const n = Number(v);
+                setPageSize(n);
+                setPage(1);
+                fetchData({ pageSize: n, page: 1 });
+              }}
+            >
+              <SelectTrigger className="w-[90px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[10, 25, 50, 100].map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    {n}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        {/* Pagination buttons */}
-        {totalPages > 1 && (
-          <DataPagination
-            page={page}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            onPageChange={(newPage) => fetchData({ page: newPage })}
-            onPageSizeChange={(newSize) => {
-              setPageSize(newSize);
-              fetchData({ page: 1, pageSize: newSize });
-            }}
-            disabled={isLoading}
-          />
-        )}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setPage(1)}
+            disabled={page <= 1}
+          >
+            <IconChevronsLeft size={16} />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setPage((p) => Math.max(p - 1, 1))}
+            disabled={page <= 1}
+          >
+            <IconChevronLeft size={16} />
+          </Button>
+          <div className="text-sm">
+            Page {page} of {totalPages}
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+            disabled={page >= totalPages}
+          >
+            <IconChevronRight size={16} />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setPage(totalPages)}
+            disabled={page >= totalPages}
+          >
+            <IconChevronsRight size={16} />
+          </Button>
+        </div>
       </div>
     </div>
   );

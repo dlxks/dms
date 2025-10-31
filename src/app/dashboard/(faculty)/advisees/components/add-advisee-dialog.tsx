@@ -1,4 +1,3 @@
-// src/components/yourpath/add-advisee-dialog.tsx
 "use client";
 
 import * as React from "react";
@@ -14,102 +13,95 @@ import {
   DialogTrigger,
 } from "@/src/components/ui/dialog";
 import { Label } from "@/src/components/ui/label";
-import { Loader2 } from "lucide-react";
-import { IconPlus } from "@tabler/icons-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/src/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/src/components/ui/popover";
+import { ChevronsUpDown, Loader2 } from "lucide-react";
+import { cn } from "@/src/lib/utils";
 import { toast } from "sonner";
-import { MultiSelect } from "@/src/components/ui/multi-select";
-import { addAdvisee, getFacultyServer, getStudentsServer } from "../actions";
+import { IconPlus } from "@tabler/icons-react";
+import { addAdvisee, getStudentsServer } from "../actions";
 
-type UserOption = { id: string; name: string };
+type Student = { id: string; name: string };
 
-export default function AddAdviseeDialog({
-  adviserId,
-  onAdded,
-}: {
-  adviserId: string;
-  onAdded?: () => void;
-}) {
-  // state
+export default function AddAdviseeDialog({ adviserId }: { adviserId: string }) {
   const [open, setOpen] = React.useState(false);
+  const [searchOpen, setSearchOpen] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const [students, setStudents] = React.useState<Student[]>([]);
+  const [selected, setSelected] = React.useState<Student | null>(null);
+  const [note, setNote] = React.useState("");
   const [loading, setLoading] = React.useState(false);
-  const [loadingLists, setLoadingLists] = React.useState(false);
+  const [isSearching, setIsSearching] = React.useState(false);
 
-  const [students, setStudents] = React.useState<UserOption[]>([]);
-  const [faculty, setFaculty] = React.useState<UserOption[]>([]);
-
-  // MultiSelect uses array-of-values even for single select
-  const [selectedStudent, setSelectedStudent] = React.useState<string[]>([]);
-  const [selectedMembers, setSelectedMembers] = React.useState<string[]>([]);
-
-  // Load students & faculty when dialog opens (preload)
+  // Debounced student search
   React.useEffect(() => {
-    if (!open) return;
-    let mounted = true;
-    (async () => {
-      setLoadingLists(true);
-      try {
-        // Fetch initial students (empty query) and faculty in parallel
-        const [studentList, facultyList] = await Promise.all([
-          getStudentsServer(""), // server now returns initial results when empty
-          getFacultyServer(),
-        ]);
-
-        if (!mounted) return;
-        setStudents(studentList || []);
-        setFaculty(facultyList || []);
-      } catch (err) {
-        console.error("Failed to load lists:", err);
-        toast.error("Failed to load students or faculty.");
-      } finally {
-        if (mounted) setLoadingLists(false);
+    let active = true;
+    const fetchData = async () => {
+      if (!search.trim()) {
+        setStudents([]);
+        return;
       }
-    })();
-    return () => {
-      mounted = false;
+      setIsSearching(true);
+      try {
+        const result = await getStudentsServer(search);
+        if (active) setStudents(result);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to search students.");
+      } finally {
+        setIsSearching(false);
+      }
     };
-  }, [open]);
+    const timeout = setTimeout(fetchData, 400);
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+    };
+  }, [search]);
 
   // Submit handler
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedStudent.length) {
-      toast.error("Please select a student.");
+
+    if (!selected) {
+      toast.error("Please select a student first.");
       return;
     }
 
     setLoading(true);
     try {
-      // selectedStudent[0] is the student id string
-      const res = await addAdvisee({
-        adviserId,
-        studentId: selectedStudent[0],
-        memberIds: selectedMembers,
-      });
+      const res = await addAdvisee({ adviserId, studentId: selected.id });
 
       if (res.success) {
-        toast.success(res.message || "Advisee added successfully!");
-        // reset
-        setSelectedStudent([]);
-        setSelectedMembers([]);
+        toast.success(res.message || `Added ${selected.name} as advisee.`);
+        setSelected(null);
+        setNote("");
         setOpen(false);
-        onAdded?.();
       } else {
         toast.error(res.message || "Failed to add advisee.");
       }
     } catch (err) {
-      console.error("addAdvisee error:", err);
-      toast.error("Unexpected error occurred.");
+      console.error(err);
+      toast.error("Unexpected error occurred while adding advisee.");
     } finally {
       setLoading(false);
     }
   }
 
-  // Convert to MultiSelect options
-  const studentOptions = students.map((s) => ({ label: s.name, value: s.id }));
-  const facultyOptions = faculty.map((f) => ({ label: f.name, value: f.id }));
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
+      {/* Trigger */}
       <DialogTrigger asChild>
         <Button variant="default" className="w-full justify-start">
           <IconPlus size={16} className="mr-2" />
@@ -117,63 +109,79 @@ export default function AddAdviseeDialog({
         </Button>
       </DialogTrigger>
 
+      {/* Content */}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add New Advisee</DialogTitle>
           <DialogDescription>
-            Select a student and optionally assign members.
+            Search and select a student to add as your advisee.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Student MultiSelect (single) */}
+          {/* Student Search */}
           <div className="grid gap-2">
             <Label>Student</Label>
+            <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className={cn(
+                    "w-full justify-between",
+                    !selected && "text-muted-foreground"
+                  )}
+                >
+                  {selected ? selected.name : "Search a student..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
 
-            {/* Show loading placeholder if lists still loading */}
-            {loadingLists ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="animate-spin" />
-                <span className="text-sm text-muted-foreground">
-                  Loading...
-                </span>
-              </div>
-            ) : (
-              <MultiSelect
-                singleSelect
-                options={studentOptions}
-                value={selectedStudent}
-                onValueChange={setSelectedStudent}
-                placeholder="Select student..."
-                searchable
-                maxCount={1}
-              />
-            )}
+              <PopoverContent className="p-0 w-[380px]">
+                <Command>
+                  <CommandInput
+                    placeholder="Type to search students..."
+                    value={search}
+                    onValueChange={setSearch}
+                  />
+                  <CommandList>
+                    <CommandEmpty>
+                      {isSearching ? "Searching..." : "No students found."}
+                    </CommandEmpty>
+                    <CommandGroup>
+                      {students.map((s) => (
+                        <CommandItem
+                          key={s.id}
+                          onSelect={() => {
+                            setSelected(s);
+                            setSearchOpen(false);
+                          }}
+                        >
+                          {s.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
-          {/* Members MultiSelect */}
-          <div className="grid gap-2">
-            <Label>Members (Optional)</Label>
-            <MultiSelect
-              options={facultyOptions}
-              value={selectedMembers}
-              onValueChange={setSelectedMembers}
-              placeholder="Select faculty/staff members"
-              searchable
-              maxCount={3}
-            />
-          </div>
-
+          {/* Actions */}
           <DialogFooter className="sm:justify-start">
             <DialogClose asChild>
-              <Button variant="secondary" type="button">
+              <Button type="button" variant="secondary">
                 Close
               </Button>
             </DialogClose>
 
-            <Button type="submit" disabled={loading}>
+            <Button
+              type="submit"
+              variant="default"
+              disabled={!selected || loading}
+            >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Add Advisee
+              {loading ? "Adding..." : "Add Advisee"}
             </Button>
           </DialogFooter>
         </form>

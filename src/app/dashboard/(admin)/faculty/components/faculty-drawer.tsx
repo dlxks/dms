@@ -37,10 +37,9 @@ export const FacultyDrawer: React.FC<FacultyDrawerProps> = ({
     try {
       await serverUpdateUserAction(id, formData);
       return { success: true };
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error("Update error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to update";
-      return { success: false, error: errorMessage };
+      return { success: false, error: error?.message || "Failed to update" };
     }
   };
 

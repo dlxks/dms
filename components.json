@@ -18,7 +18,5 @@
     "lib": "@/src/lib",
     "hooks": "@/src/hooks"
   },
-  "registries": {
-    "@shadcn-editor": "https://shadcn-editor.vercel.app/r/{name}.json"
-  }
+  "registries": {}
 }
