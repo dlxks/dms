@@ -9,27 +9,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-//////////////////////////////////////////////////////
-// AUTHENTICATION MODELS
-//////////////////////////////////////////////////////
-
 model Account {
   id                String    @id @default(cuid())
   userId            String    @map("user_id")
   type              String
   provider          String
   providerAccountId String    @map("provider_account_id")
-  refresh_token     String?   @db.Text
-  access_token      String?   @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?   @db.Text
+  id_token          String?
   session_state     String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime? @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
@@ -40,8 +35,7 @@ model Session {
   sessionToken String   @unique @map("session_token")
   userId       String   @map("user_id")
   expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
 }
@@ -55,161 +49,136 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
-//////////////////////////////////////////////////////
-// USER & RELATED MODELS
-//////////////////////////////////////////////////////
-
 model User {
-  id            String    @id @default(cuid())
-  studentId     String?   @unique
-  staffId       String?   @unique
-  firstName     String?
-  middleName    String?
-  lastName      String?
-  email         String?   @unique
-  phoneNumber   String?
-  password      String?
-  emailVerified DateTime? @map("email_verified")
-  image         String?
-  role          Role      @default(STUDENT)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime? @updatedAt
-
-  // Authentication
-  accounts Account[]
-  sessions Session[]
-
-  // Announcements
-  announcements Announcement[] @relation("CreatedAnnouncements")
-
-  // Defense Schedule Relations
-  defenseSchedulesCreated   DefenseSchedule[] @relation("CreatedByRelation")
-  defenseSchedulesUpdated   DefenseSchedule[] @relation("UpdatedByRelation")
-  defenseSchedulesAsStudent DefenseSchedule[] @relation("StudentRelation")
-
-  // Many-to-many: faculty members who are part of defense panels
-  defenseMemberships DefenseSchedule[] @relation("DefenseFacultyMembers")
-
-  // Defense requirements owned by this user
-  defenseRequirements DefenseRequirement[] @relation("OwnerDefenseRequirements")
-
-  // Advisee relationships
-  adviseesAsAdviser  Advisee[] @relation("AdviserRelation")
-  adviseesAsStudent  Advisee[] @relation("StudentRelation")
-  adviseeMemberships Advisee[] @relation("AdviseeMembers")
-
-  // Faculty documents
-  facultyDocuments FacultyDocument[]
+  id                        String                 @id @default(cuid())
+  studentId                 String?                @unique
+  staffId                   String?                @unique
+  firstName                 String?
+  middleName                String?
+  lastName                  String?
+  email                     String?                @unique
+  password                  String?
+  emailVerified             DateTime?              @map("email_verified")
+  image                     String?
+  role                      Role                   @default(STUDENT)
+  createdAt                 DateTime               @default(now())
+  updatedAt                 DateTime?              @updatedAt
+  phoneNumber               String?
+  accounts                  Account[]
+  adviseeMemberships        AdviseeMember[]        @relation("AdviseeMembersUser")
+  adviseesAsAdviser         Advisee[]              @relation("AdviserRelation")
+  adviseesAsStudent         Advisee[]              @relation("StudentRelation")
+  announcements             Announcement[]         @relation("CreatedAnnouncements")
+  defenseFacultyMemberships DefenseFacultyMember[]
+  defenseRequirements       DefenseRequirement[]   @relation("OwnerDefenseRequirements")
+  defenseSchedulesCreated   DefenseSchedule[]      @relation("CreatedByRelation")
+  defenseSchedulesAsStudent DefenseSchedule[]      @relation("StudentRelation")
+  defenseSchedulesUpdated   DefenseSchedule[]      @relation("UpdatedByRelation")
+  facultyDocuments          FacultyDocument[]
+  sessions                  Session[]
 
   @@map("users")
 }
 
-//////////////////////////////////////////////////////
-// ANNOUNCEMENTS
-//////////////////////////////////////////////////////
-
 model Announcement {
-  id        String    @id @default(cuid())
-  title     String
-  content   String
-  files     String[]  @default([])
-  createdBy String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
-
-  creator User @relation("CreatedAnnouncements", fields: [createdBy], references: [id], onDelete: Cascade)
+  id         String             @id @default(cuid())
+  title      String
+  content    String
+  files      String[]           @default([])
+  createdBy  String
+  status     AnnouncementStatus @default(VISIBLE)
+  expiryDate DateTime?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime?          @updatedAt
+  creator    User               @relation("CreatedAnnouncements", fields: [createdBy], references: [id], onDelete: Cascade)
 
   @@map("announcements")
 }
 
-//////////////////////////////////////////////////////
-// DEFENSE SCHEDULE & REQUIREMENTS
-//////////////////////////////////////////////////////
 model DefenseSchedule {
-  id        String          @id @default(cuid())
-  studentId String
-  category  DefenseCategory
-  date      DateTime
-  time      String
-  status    DefenseStatus   @default(PENDING)
-  createdBy String
-  updatedBy String?
-
-  // Relations
-  student     User  @relation("StudentRelation", fields: [studentId], references: [id], onDelete: Cascade)
-  createdUser User  @relation("CreatedByRelation", fields: [createdBy], references: [id], onDelete: Cascade)
-  updatedUser User? @relation("UpdatedByRelation", fields: [updatedBy], references: [id])
-
-  // Many-to-many: faculty panel members
-  facultyMembers User[] @relation("DefenseFacultyMembers")
-
-  // Uploaded requirements for this defense
+  id                  String                    @id @default(cuid())
+  studentId           String
+  date                DateTime
+  time                String
+  createdBy           String
+  updatedBy           String?
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime?                 @updatedAt
+  category            DefenseCategory
+  status              DefenseStatus             @default(PENDING)
+  facultyMemberships  DefenseFacultyMember[]
+  requiredDocuments   DefenseRequiredDocument[] @relation("ScheduleRequiredDocuments")
   defenseRequirements DefenseRequirement[]
-
-  // Category-specific required documents (relation fix)
-  requiredDocuments DefenseRequiredDocument[] @relation("ScheduleRequiredDocuments")
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
+  createdUser         User                      @relation("CreatedByRelation", fields: [createdBy], references: [id], onDelete: Cascade)
+  student             User                      @relation("StudentRelation", fields: [studentId], references: [id], onDelete: Cascade)
+  updatedUser         User?                     @relation("UpdatedByRelation", fields: [updatedBy], references: [id])
 
   @@map("defense_schedules")
 }
 
 model DefenseRequirement {
-  id        String    @id @default(cuid())
+  id        String          @id @default(cuid())
   title     String
   file      String
   ownerId   String
   defenseId String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
-
-  owner   User            @relation("OwnerDefenseRequirements", fields: [ownerId], references: [id], onDelete: Cascade)
-  defense DefenseSchedule @relation(fields: [defenseId], references: [id], onDelete: Cascade)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime?       @updatedAt
+  defense   DefenseSchedule @relation(fields: [defenseId], references: [id], onDelete: Cascade)
+  owner     User            @relation("OwnerDefenseRequirements", fields: [ownerId], references: [id], onDelete: Cascade)
 
   @@map("defense_requirements")
 }
 
-// Static reference of required documents per defense category
 model DefenseRequiredDocument {
   id          String          @id @default(cuid())
   defenseId   String
   name        String
-  category    DefenseCategory // TITLE or FINAL
+  category    DefenseCategory
   description String?
   isMandatory Boolean         @default(true)
-
-  // Relation fix: links each required document to a specific DefenseSchedule
-  defense DefenseSchedule @relation("ScheduleRequiredDocuments", fields: [defenseId], references: [id], onDelete: Cascade)
+  defense     DefenseSchedule @relation("ScheduleRequiredDocuments", fields: [defenseId], references: [id], onDelete: Cascade)
 
   @@map("defense_required_documents")
 }
 
-//////////////////////////////////////////////////////
-// ADVISEE RELATIONSHIPS
-//////////////////////////////////////////////////////
+model DefenseFacultyMember {
+  defenseId String
+  facultyId String
+  defense   DefenseSchedule @relation(fields: [defenseId], references: [id], onDelete: Cascade)
+  faculty   User            @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@id([defenseId, facultyId])
+  @@map("defense_faculty_members")
+}
 
 model Advisee {
-  id        String        @id @default(cuid())
+  id        String          @id @default(cuid())
   adviserId String
   studentId String
-  status    AdviseeStatus @default(PENDING)
-
-  adviser User @relation("AdviserRelation", fields: [adviserId], references: [id], onDelete: Cascade)
-  student User @relation("StudentRelation", fields: [studentId], references: [id], onDelete: Cascade)
-
-  // Many-to-many: additional faculty members
-  members User[] @relation("AdviseeMembers")
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
+  createdAt DateTime        @default(now())
+  updatedAt DateTime?       @updatedAt
+  status    AdviseeStatus   @default(PENDING)
+  members   AdviseeMember[] @relation("AdviseeMembers")
+  adviser   User            @relation("AdviserRelation", fields: [adviserId], references: [id], onDelete: Cascade)
+  student   User            @relation("StudentRelation", fields: [studentId], references: [id], onDelete: Cascade)
 
   @@map("advisees")
 }
 
-//////////////////////////////////////////////////////
-// FACULTY DOCUMENT SUBMISSIONS
-//////////////////////////////////////////////////////
+model AdviseeMember {
+  id        String     @id @default(cuid())
+  adviseeId String
+  memberId  String
+  type      MemberType
+  createdAt DateTime   @default(now())
+  updatedAt DateTime?  @updatedAt
+  advisee   Advisee    @relation("AdviseeMembers", fields: [adviseeId], references: [id], onDelete: Cascade)
+  member    User       @relation("AdviseeMembersUser", fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([adviseeId, memberId])
+  @@map("advisee_members")
+}
 
 model FacultyDocument {
   id        String           @id @default(cuid())
@@ -220,16 +189,11 @@ model FacultyDocument {
   status    DocumentStatus   @default(NONE)
   createdAt DateTime         @default(now())
   updatedAt DateTime?        @updatedAt
-
-  faculty User @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  faculty   User             @relation(fields: [facultyId], references: [id], onDelete: Cascade)
 
   @@unique([facultyId, category])
   @@map("faculty_documents")
 }
-
-//////////////////////////////////////////////////////
-// ENUMERATIONS
-//////////////////////////////////////////////////////
 
 enum Role {
   STUDENT
@@ -277,4 +241,14 @@ enum AdviseeStatus {
   PENDING
   ACTIVE
   INACTIVE
+}
+
+enum MemberType {
+  LEADER
+  MEMBER
+}
+
+enum AnnouncementStatus {
+  VISIBLE
+  HIDDEN
 }

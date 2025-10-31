@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { AdviseeStatus } from "@/src/app/generated/prisma";
+import { AdviseeStatus, MemberType } from "@/src/app/generated/prisma";
 import { getAdvisees, GetAdviseesParams } from "@/src/utils/getAdvisees";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 
@@ -26,59 +26,85 @@ export const fetchAdviseesAction = unstable_cache(
 );
 
 /* -------------------------------------------------
+   Fetch Faculty
+---------------------------------------------------*/
+export async function getFacultyServer() {
+  const faculty = await prisma.user.findMany({
+    where: { role: { in: ["FACULTY", "STAFF"] } },
+    select: { id: true, firstName: true, middleName: true, lastName: true },
+    orderBy: { lastName: "asc" },
+  });
+
+  return faculty.map((f) => ({
+    id: f.id,
+    name: [f.firstName, f.middleName, f.lastName].filter(Boolean).join(" "),
+  }));
+}
+
+/* -------------------------------------------------
    Add Advisee
 ---------------------------------------------------*/
-/**
- * Creates a new advisee request for a given adviser and student.
- * Rules:
- *  - Cannot create if the student already has an ACTIVE adviser.
- *  - Cannot create if there is a PENDING request for the student.
- *  - Allows creation if the most recent advisee is INACTIVE or none exists.
- */
 export async function addAdvisee({
   adviserId,
   studentId,
+  memberIds = [],
 }: {
   adviserId: string;
   studentId: string;
+  memberIds?: string[];
 }) {
   if (!adviserId || !studentId) {
     return { success: false, message: "Missing required fields." };
   }
 
-  // Get all advisee records for this student
-  const existingRecords = await prisma.advisee.findMany({
-    where: { studentId },
-    orderBy: { createdAt: "desc" },
-  });
-
-  // Check if student already has an active adviser
-  const hasActive = existingRecords.some((r) => r.status === AdviseeStatus.ACTIVE);
-  if (hasActive) {
-    return { success: false, message: "This student already has an active adviser." };
-  }
-
-  // Check if student has a pending request
-  const hasPending = existingRecords.some((r) => r.status === AdviseeStatus.PENDING);
-  if (hasPending) {
-    return { success: false, message: "This student already has a pending request." };
-  }
-
   try {
+    // Ensure student exists and is indeed a STUDENT
+    const student = await prisma.user.findUnique({
+      where: { id: studentId },
+      select: { role: true },
+    });
+
+    if (!student || student.role !== "STUDENT") {
+      return { success: false, message: "Selected user is not a student." };
+    }
+
+    // Check existing advisee records
+    const existing = await prisma.advisee.findMany({
+      where: { studentId },
+      select: { status: true },
+    });
+
+    if (existing.some((r) => r.status === AdviseeStatus.ACTIVE))
+      return { success: false, message: "This student already has an active adviser." };
+
+    if (existing.some((r) => r.status === AdviseeStatus.PENDING))
+      return { success: false, message: "This student already has a pending request." };
+
+    // Create new advisee record
     const advisee = await prisma.advisee.create({
       data: {
         adviserId,
         studentId,
         status: AdviseeStatus.PENDING,
+        members: {
+          create: memberIds.map((id) => ({
+            memberId: id,
+            type: MemberType.MEMBER,
+          })),
+        },
       },
-      include: { student: true },
+      include: {
+        adviser: true,
+        student: true,
+        members: { include: { member: true } },
+      },
     });
 
     revalidateTag("advisees");
 
     return {
       success: true,
-      message: "Advisee request successfully created.",
+      message: "Advisee request created successfully.",
       advisee,
     };
   } catch (error) {
@@ -88,35 +114,40 @@ export async function addAdvisee({
 }
 
 /* -------------------------------------------------
-   Create Advisee (FormData-based)
----------------------------------------------------*/
-export async function createAdviseeAction(formData: FormData) {
-  const adviserId = getFormValue(formData, "adviserId", true)!;
-  const studentId = getFormValue(formData, "studentId", true)!;
-  const status =
-    (getFormValue(formData, "status") as AdviseeStatus) ?? AdviseeStatus.PENDING;
-
-  await prisma.advisee.create({
-    data: { adviserId, studentId, status },
-  });
-
-  revalidateTag("advisees");
-}
-
-/* -------------------------------------------------
-   Update Advisee Info
+   Update Advisee
 ---------------------------------------------------*/
 export async function updateAdviseeAction(id: string, formData: FormData) {
-  const adviserId = getFormValue(formData, "adviserId", true)!;
-  const studentId = getFormValue(formData, "studentId", true)!;
+  try {
+    const adviserId = getFormValue(formData, "adviserId", true)!;
+    const studentId = getFormValue(formData, "studentId", true)!;
+    const memberIds = (formData.getAll("memberIds") as string[])?.filter(Boolean) || [];
+    const status = getFormValue(formData, "status") as AdviseeStatus | undefined;
 
-  await prisma.advisee.update({
-    where: { id },
-    data: { adviserId, studentId },
-  });
+    await prisma.advisee.update({
+      where: { id },
+      data: {
+        adviserId,
+        studentId,
+        ...(status && { status }),
+        updatedAt: new Date(),
+        members: {
+          deleteMany: {},
+          create: memberIds.map((id) => ({
+            memberId: id,
+            type: MemberType.MEMBER,
+          })),
+        },
+      },
+    });
 
-  revalidatePath("/dashboard/advisees");
-  revalidateTag("advisees");
+
+    revalidatePath("/dashboard/advisees");
+    revalidateTag("advisees");
+    return { success: true, message: "Advisee updated successfully." };
+  } catch (error) {
+    console.error("Error updating advisee:", error);
+    return { success: false, message: "Failed to update advisee." };
+  }
 }
 
 /* -------------------------------------------------
@@ -126,7 +157,7 @@ export async function updateAdviseeStatusAction(id: string, status: AdviseeStatu
   try {
     await prisma.advisee.update({
       where: { id },
-      data: { status },
+      data: { status, updatedAt: new Date() },
     });
 
     revalidateTag("advisees");
@@ -142,29 +173,51 @@ export async function updateAdviseeStatusAction(id: string, status: AdviseeStatu
 ---------------------------------------------------*/
 export async function deleteAdviseeAction(id: string) {
   try {
+    const advisee = await prisma.advisee.findUnique({
+      where: { id },
+      include: { members: true },
+    });
+
+    if (!advisee) return { success: false, error: "Advisee not found." };
+
+    await prisma.adviseeMember.deleteMany({ where: { adviseeId: id } });
     await prisma.advisee.delete({ where: { id } });
+
     revalidateTag("advisees");
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error deleting advisee:", error);
     return { success: false, error: "Failed to delete advisee." };
   }
 }
 
 /* -------------------------------------------------
-   Fetch Students for Dropdown (Server-side)
+   Fetch Students
 ---------------------------------------------------*/
 export async function getStudentsServer(query: string) {
-  return searchStudents(query);
+  // normalize query (empty string allowed)
+  return searchStudents(query || "", 20); // default initial limit 20
 }
 
-/**
- * Performs student search with basic filtering.
- */
 export async function searchStudents(query: string, limit = 10) {
   const q = query.trim();
-  if (!q) return [];
 
+  // If no query provided -> return the first `limit` students for initial list
+  if (!q) {
+    const students = await prisma.user.findMany({
+      where: { role: "STUDENT" },
+      select: { id: true, studentId: true, firstName: true, middleName: true, lastName: true },
+      orderBy: { lastName: "asc" },
+      take: limit,
+    });
+
+    return students.map((s) => ({
+      id: s.id,
+      name: `${s.studentId} — ${[s.firstName, s.middleName, s.lastName].filter(Boolean).join(" ")}`,
+    }));
+  }
+
+  // Otherwise do the filtered search (existing behavior)
   const students = await prisma.user.findMany({
     where: {
       role: "STUDENT",
@@ -175,21 +228,13 @@ export async function searchStudents(query: string, limit = 10) {
         { lastName: { contains: q, mode: "insensitive" } },
       ],
     },
-    select: {
-      id: true,
-      studentId: true,
-      firstName: true,
-      middleName: true,
-      lastName: true,
-    },
+    select: { id: true, studentId: true, firstName: true, middleName: true, lastName: true },
     orderBy: { lastName: "asc" },
     take: limit,
   });
 
   return students.map((s) => ({
     id: s.id,
-    name: `${s.studentId} — ${[s.firstName, s.middleName, s.lastName]
-      .filter(Boolean)
-      .join(" ")}`,
+    name: `${s.studentId} — ${[s.firstName, s.middleName, s.lastName].filter(Boolean).join(" ")}`,
   }));
 }
