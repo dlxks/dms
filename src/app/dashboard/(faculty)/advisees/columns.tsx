@@ -51,11 +51,12 @@ export function getAdviseeColumns(
       enableSorting: false,
       enableHiding: false,
     },
+
     {
       accessorKey: "studentName",
       header: "Student",
       cell: ({ row }) => {
-        const student = row.original.student;
+        const { student } = row.original;
         return (
           <div>
             {student.firstName} {student.lastName}
@@ -64,43 +65,61 @@ export function getAdviseeColumns(
         );
       },
     },
+
     {
-      accessorKey: "phoneNumber",
-      header: "Phone",
-      cell: ({ row }) => (
-        <span>{row.original.student.phoneNumber || "N/A"}</span>
-      ),
+      accessorKey: "members",
+      header: "Members",
+      cell: ({ row }) => {
+        const members = row.original.members || [];
+
+        if (members.length === 0) {
+          return (
+            <span className="text-muted-foreground text-sm">No members</span>
+          );
+        }
+
+        return (
+          <div className="flex flex-wrap gap-1">
+            {members.map((m) => (
+              <Badge
+                key={m.id}
+                variant="secondary"
+                className="text-xs px-2 py-1"
+              >
+                {m.member?.firstName} {m.member?.lastName}
+              </Badge>
+            ))}
+          </div>
+        );
+      },
     },
+
     {
       accessorKey: "status",
       header: "Request Status",
       cell: ({ row }) => {
         const status = row.original.status;
-        const statusConfig = {
+        const config = {
           ACTIVE: {
             icon: <IconCircleCheckFilled className="text-green-500" />,
-            textColor: "text-green-500",
-            borderColor: "border border-green-500",
+            color: "text-green-500 border border-green-500",
           },
           PENDING: {
             icon: <IconAlertCircle className="text-yellow-500" />,
-            textColor: "text-yellow-500",
-            borderColor: "border border-yellow-500",
+            color: "text-yellow-500 border border-yellow-500",
           },
           INACTIVE: {
             icon: <IconAlertCircle className="text-gray-400" />,
-            textColor: "text-gray-400",
-            borderColor: "border border-gray-400",
+            color: "text-gray-400 border border-gray-400",
           },
         };
 
-        const { icon, textColor, borderColor } =
-          statusConfig[status] || statusConfig.INACTIVE;
+        const { icon, color } = config[status] || config.INACTIVE;
 
         return (
           <Badge
             variant="outline"
-            className={`flex items-center gap-1 px-2 py-0.5 text-sm font-medium ${textColor} ${borderColor}`}
+            className={`flex items-center gap-1 px-2 py-0.5 text-sm font-medium ${color}`}
           >
             {icon}
             <span className="capitalize">{status.toLowerCase()}</span>
@@ -108,11 +127,26 @@ export function getAdviseeColumns(
         );
       },
     },
+
     {
       accessorKey: "createdAt",
       header: "Creation Date",
-      cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
+      cell: ({ row }) => {
+        const date = new Date(row.original.createdAt);
+        return (
+          <span className="text-sm text-muted-foreground">
+            {isNaN(date.getTime())
+              ? "Invalid date"
+              : date.toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+          </span>
+        );
+      },
     },
+
     {
       id: "actions",
       header: "",
@@ -130,6 +164,7 @@ export function getAdviseeColumns(
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-32">
+            {/* Accept */}
             <DropdownMenuItem asChild>
               <AcceptConfirmDialog
                 itemName={`${row.original.student.firstName} ${row.original.student.lastName}`}
@@ -142,9 +177,7 @@ export function getAdviseeColumns(
                     toast.success("Advisee accepted successfully");
                     await fetchData();
                   } else {
-                    toast.error(
-                      (res && res.error) || "Failed to accept advisee"
-                    );
+                    toast.error(res?.error || "Failed to accept advisee");
                   }
                 }}
               >
@@ -159,10 +192,15 @@ export function getAdviseeColumns(
                 </Button>
               </AcceptConfirmDialog>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <AdviseeDrawer item={row.original} />
+
+            {/* View */}
+            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+              <AdviseeDrawer item={row.original} fetchData={fetchData} />
             </DropdownMenuItem>
+
             <DropdownMenuSeparator />
+
+            {/* Delete */}
             <DropdownMenuItem asChild>
               <DeleteConfirmDialog
                 itemName={`${row.original.student.firstName} ${row.original.student.lastName}`}

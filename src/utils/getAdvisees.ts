@@ -111,6 +111,19 @@ export async function getAdvisees(params: GetAdviseesParams) {
     include: {
       adviser: true,
       student: true,
+      members: {
+        include: {
+          member: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phoneNumber: true
+            }
+          }
+        }
+      }
     },
   });
 
