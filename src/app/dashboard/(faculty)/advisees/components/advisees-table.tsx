@@ -39,20 +39,16 @@ import {
 } from "@/src/components/ui/dropdown-menu";
 
 import LoadingState from "@/src/components/shared/LoadingState";
-import DataPagination from "@/src/components/shared/dashboard/DataPagination";
 import AddAdviseeDialog from "./add-advisee-dialog";
 import { fetchAdviseesAction } from "../actions";
 import { getAdviseeColumns } from "../columns";
 
 import {
-  IconChevronLeft,
-  IconChevronRight,
-  IconChevronsLeft,
-  IconChevronsRight,
   IconArrowUp,
   IconArrowDown,
   IconAdjustments,
 } from "@tabler/icons-react";
+import DataPagination from "@/src/components/shared/data-pagination";
 
 export type AdviseeItem = {
   id: string;
@@ -73,6 +69,16 @@ export type AdviseeItem = {
     lastName: string | null;
     email: string | null;
   };
+  members: {
+    id: string;
+    member: {
+      id: string;
+      firstName: string | null;
+      lastName: string | null;
+      email: string | null;
+      phoneNumber?: string | null;
+    } | null;
+  }[];
 };
 
 export type AdviseesResponse = {
@@ -239,7 +245,10 @@ export default function AdviseesTable({
             </div>
 
             <div className="border-t border-muted pt-2">
-              <AddAdviseeDialog adviserId={adviserId} />
+              <AddAdviseeDialog
+                adviserId={adviserId}
+                onAdded={() => fetchData()}
+              />
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -318,57 +327,28 @@ export default function AdviseesTable({
         </div>
       )}
 
+      {/* Pagination controls */}
       <div className="flex items-center justify-between">
+        {/* Selected rows */}
         <div className="text-sm text-muted-foreground">
           {Object.keys(rowSelection).length} selected
         </div>
 
+        {/* Pagination buttons */}
         {totalPages > 1 && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setPage(1)}
-              disabled={page <= 1}
-            >
-              <IconChevronsLeft size={16} />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setPage((p) => Math.max(p - 1, 1))}
-              disabled={page <= 1}
-            >
-              <IconChevronLeft size={16} />
-            </Button>
-            <div className="text-sm">
-              Page {page} of {totalPages}
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-              disabled={page >= totalPages}
-            >
-              <IconChevronRight size={16} />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setPage(totalPages)}
-              disabled={page >= totalPages}
-            >
-              <IconChevronsRight size={16} />
-            </Button>
-          </div>
+          <DataPagination
+            page={page}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            onPageChange={(newPage) => fetchData({ page: newPage })}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              fetchData({ page: 1, pageSize: newSize });
+            }}
+            disabled={isLoading}
+          />
         )}
       </div>
-
-      <DataPagination
-        page={page}
-        totalPages={totalPages}
-        onPageChange={setPage}
-      />
     </div>
   );
 }
