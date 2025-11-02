@@ -1,6 +1,14 @@
-import { DefaultSession } from "next-auth"
+import { DefaultSession } from "next-auth";
 
 declare module "next-auth" {
+  interface User {
+    id: string;
+    role: string;
+    firstName?: string | null;
+    middleName?: string | null;
+    lastName?: string | null;
+  }
+
   interface Session {
     user: {
       id: string;
@@ -10,8 +18,10 @@ declare module "next-auth" {
       lastName?: string | null;
     } & DefaultSession["user"];
   }
+}
 
-  interface User {
+declare module "@auth/core/adapters" {
+  interface AdapterUser {
     role: string;
     firstName?: string | null;
     middleName?: string | null;

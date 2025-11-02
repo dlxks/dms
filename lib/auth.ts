@@ -3,26 +3,6 @@ import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import prisma from "@/lib/prisma";
 
-// --- Type augmentation ---
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string;
-      role: string;
-      firstName?: string | null;
-      middleName?: string | null;
-      lastName?: string | null;
-    } & DefaultSession["user"];
-  }
-
-  interface User {
-    role: string;
-    firstName?: string | null;
-    middleName?: string | null;
-    lastName?: string | null;
-  }
-}
-
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
 
