@@ -1,12 +1,10 @@
+// src/src/utils/getAdvisees.ts
 import prisma from "@/lib/prisma";
 
 /* -------------------------------------------------
    Types
 ---------------------------------------------------*/
 
-/**
- * Possible filter values for advisee queries.
- */
 export type AdviseeFilterValue =
   | string
   | boolean
@@ -14,16 +12,10 @@ export type AdviseeFilterValue =
   | { gte?: Date; lte?: Date }
   | Array<string | boolean | null>;
 
-/**
- * Mapping of filter field names to their values.
- */
 export type AdviseeFilters = Partial<Record<string, AdviseeFilterValue>>;
 
-/**
- * Parameters for fetching advisees with pagination, filtering, and sorting.
- */
 export type GetAdviseesParams = {
-  adviserId?: string; // Only fetch advisees belonging to this adviser
+  adviserId?: string;
   page?: number;
   pageSize?: number;
   search?: string;
@@ -33,16 +25,8 @@ export type GetAdviseesParams = {
 };
 
 /* -------------------------------------------------
-   Main Query: getAdvisees
+   getAdvisees: paginated, filtered, scoped to adviser
 ---------------------------------------------------*/
-
-/**
- * Retrieves advisee records from the database with pagination, filtering,
- * and adviser-based scoping.
- *
- * Strictly enforces adviser-level access: if no adviserId is provided,
- * the function returns an empty result set.
- */
 export async function getAdvisees(params: GetAdviseesParams) {
   const {
     adviserId,
@@ -54,7 +38,7 @@ export async function getAdvisees(params: GetAdviseesParams) {
     sortDir = "desc",
   } = params;
 
-  // Enforce adviser-level access
+  // Enforce adviser-level access: if no adviserId, return empty result
   if (!adviserId) {
     return {
       items: [],
@@ -65,14 +49,13 @@ export async function getAdvisees(params: GetAdviseesParams) {
     };
   }
 
-  // Enforce safe pagination boundaries
   const take = Math.max(1, Math.min(100, pageSize));
   const skip = Math.max(0, (Math.max(1, page) - 1) * take);
 
-  // Base query conditions
+  // Base where
   const where: any = { adviserId };
 
-  // Optional search by student name or email
+  // Search across student name/email
   if (search?.trim()) {
     const q = search.trim();
     where.OR = [
@@ -82,48 +65,45 @@ export async function getAdvisees(params: GetAdviseesParams) {
     ];
   }
 
-  // Apply additional filters dynamically
-  for (const [key, value] of Object.entries(filters)) {
+  // Apply filters (simple dynamic mapping)
+  for (const [key, value] of Object.entries(filters || {})) {
     if (value === undefined) continue;
-
     if (key === "createdAt" && typeof value === "object" && value !== null) {
       const range: any = {};
       if ("gte" in value && value.gte) range.gte = value.gte;
       if ("lte" in value && value.lte) range.lte = value.lte;
-      if (Object.keys(range).length > 0) where.createdAt = range;
+      if (Object.keys(range).length) where.createdAt = range;
       continue;
     }
-
     if (value === null) where[key] = null;
     else if (Array.isArray(value)) where[key] = { in: value };
     else where[key] = value;
   }
 
-  // Count total advisees for pagination
   const total = await prisma.advisee.count({ where });
 
-  // Fetch paginated records with related adviser and student data
   const items = await prisma.advisee.findMany({
     where,
     orderBy: { [sortBy]: sortDir },
     skip,
     take,
     include: {
-      adviser: true,
-      student: true,
+      adviser: {
+        select: { id: true, firstName: true, lastName: true, email: true },
+      },
+      student: {
+        select: { id: true, studentId: true, firstName: true, lastName: true, email: true, phoneNumber: true },
+      },
+      // Because your schema has members: User[] via relation "AdviseeMembers"
       members: {
-        include: {
-          member: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phoneNumber: true
-            }
-          }
-        }
-      }
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phoneNumber: true,
+        },
+      },
     },
   });
 
@@ -132,6 +112,6 @@ export async function getAdvisees(params: GetAdviseesParams) {
     total,
     page,
     pageSize: take,
-    pages: Math.ceil(total / take) || 1,
+    pages: Math.max(1, Math.ceil(total / take) || 1),
   };
 }

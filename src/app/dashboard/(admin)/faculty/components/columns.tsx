@@ -64,12 +64,10 @@ export function getUserColumns(
     },
 
     {
-      accessorKey: "studentId",
-      header: "Student ID",
+      accessorKey: "staffId",
+      header: "Faculty ID",
       cell: ({ row }) => (
-        <div className="font-mono text-sm">
-          {row.original.studentId || "N/A"}
-        </div>
+        <div className="font-mono text-sm">{row.original.staffId || "N/A"}</div>
       ),
     },
 
